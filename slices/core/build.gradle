@@ -14,24 +14,36 @@
  * limitations under the License.
  */
 
+import static android.support.dependencies.DependenciesKt.*
+import android.support.LibraryGroups
+import android.support.LibraryVersions
+
 plugins {
     id("SupportAndroidLibraryPlugin")
 }
 
 dependencies {
     implementation project(":support-annotations")
+    implementation project(":appcompat-v7")
+
+    androidTestImplementation(TEST_RUNNER)
 }
 
 android {
-    defaultConfig {
-        minSdkVersion 28
+    sourceSets {
+        main.res.srcDirs = [
+                'res',
+                'res-public'
+        ]
     }
 }
 
 supportLibrary {
-    name 'Common utilities for slices'
-    publish false
-    inceptionYear '2017'
-    description "The slices core library provides utilities for the slices view and provider libraries"
-    java8Library true
+    name = "Common utilities for slices"
+    publish = true
+    mavenVersion = LibraryVersions.SUPPORT_LIBRARY
+    mavenGroup = LibraryGroups.SLICES
+    inceptionYear = "2017"
+    description = "The slices core library provides utilities for the slices view and provider libraries"
+    minSdkVersion = 24
 }

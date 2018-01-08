@@ -27,14 +27,12 @@ import com.google.auto.common.BasicAnnotationProcessor
 import com.google.auto.common.MoreElements
 import com.google.common.collect.SetMultimap
 import java.io.File
-import javax.annotation.processing.SupportedSourceVersion
 import javax.lang.model.SourceVersion
 import javax.lang.model.element.Element
 
 /**
  * The annotation processor for Room.
  */
-@SupportedSourceVersion(SourceVersion.RELEASE_7)
 class RoomProcessor : BasicAnnotationProcessor() {
     override fun initSteps(): MutableIterable<ProcessingStep>? {
         val context = Context(processingEnv)
@@ -45,9 +43,14 @@ class RoomProcessor : BasicAnnotationProcessor() {
         return Context.ARG_OPTIONS.toMutableSet()
     }
 
+    override fun getSupportedSourceVersion(): SourceVersion {
+        return SourceVersion.latest()
+    }
+
     class DatabaseProcessingStep(context: Context) : ContextBoundProcessingStep(context) {
-        override fun process(elementsByAnnotation: SetMultimap<Class<out Annotation>, Element>)
-                : MutableSet<Element> {
+        override fun process(
+                elementsByAnnotation: SetMultimap<Class<out Annotation>, Element>
+        ): MutableSet<Element> {
             // TODO multi step support
             val databases = elementsByAnnotation[Database::class.java]
                     ?.map {

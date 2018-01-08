@@ -25,42 +25,88 @@ import android.support.annotation.Nullable;
 
 import java.util.concurrent.Executor;
 
+/**
+ * Builder for {@code LiveData<PagedList>}, given a {@link DataSource.Factory} and a
+ * {@link PagedList.Config}.
+ * <p>
+ * The required parameters are in the constructor, so you can simply construct and build, or
+ * optionally enable extra features (such as initial load key, or BoundaryCallback.
+ *
+ * @param <Key> Type of input valued used to load data from the DataSource. Must be integer if
+ *             you're using PositionalDataSource.
+ * @param <Value> Item type being presented.
+ */
 public class LivePagedListBuilder<Key, Value> {
     private Key mInitialLoadKey;
     private PagedList.Config mConfig;
     private DataSource.Factory<Key, Value> mDataSourceFactory;
     private PagedList.BoundaryCallback mBoundaryCallback;
-    private Executor mMainThreadExecutor;
     private Executor mBackgroundThreadExecutor;
 
-    @SuppressWarnings("WeakerAccess")
+    /**
+     * Creates a LivePagedListBuilder with required parameters.
+     *
+     * @param dataSourceFactory DataSource factory providing DataSource generations.
+     * @param config Paging configuration.
+     */
+    public LivePagedListBuilder(@NonNull DataSource.Factory<Key, Value> dataSourceFactory,
+            @NonNull PagedList.Config config) {
+        mDataSourceFactory = dataSourceFactory;
+        mConfig = config;
+    }
+
+    /**
+     * Creates a LivePagedListBuilder with required parameters.
+     * <p>
+     * This method is a convenience for:
+     * <pre>
+     * LivePagedListBuilder(dataSourceFactory,
+     *         new PagedList.Config.Builder().setPageSize(pageSize).build())
+     * </pre>
+     *
+     * @param dataSourceFactory DataSource.Factory providing DataSource generations.
+     * @param pageSize Size of pages to load.
+     */
+    public LivePagedListBuilder(@NonNull DataSource.Factory<Key, Value> dataSourceFactory,
+            int pageSize) {
+        this(dataSourceFactory, new PagedList.Config.Builder().setPageSize(pageSize).build());
+    }
+
+    /**
+     * First loading key passed to the first PagedList/DataSource.
+     * <p>
+     * When a new PagedList/DataSource pair is created after the first, it acquires a load key from
+     * the previous generation so that data is loaded around the position already being observed.
+     *
+     * @param key Initial load key passed to the first PagedList/DataSource.
+     * @return this
+     */
     @NonNull
     public LivePagedListBuilder<Key, Value> setInitialLoadKey(@Nullable Key key) {
         mInitialLoadKey = key;
         return this;
     }
 
-    @SuppressWarnings("WeakerAccess")
-    @NonNull
-    public LivePagedListBuilder<Key, Value> setPagingConfig(@NonNull PagedList.Config config) {
-        mConfig = config;
-        return this;
-    }
-
-    @SuppressWarnings("WeakerAccess")
-    @NonNull
-    public LivePagedListBuilder<Key, Value> setPagingConfig(int pageSize) {
-        mConfig = new PagedList.Config.Builder().setPageSize(pageSize).build();
-        return this;
-    }
-
-    @NonNull
-    public LivePagedListBuilder<Key, Value> setDataSourceFactory(
-            @NonNull DataSource.Factory<Key, Value> dataSourceFactory) {
-        mDataSourceFactory = dataSourceFactory;
-        return this;
-    }
-
+    /**
+     * Sets a {@link PagedList.BoundaryCallback} on each PagedList created, typically used to load
+     * additional data from network when paging from local storage.
+     * <p>
+     * Pass a BoundaryCallback to listen to when the PagedList runs out of data to load. If this
+     * method is not called, or {@code null} is passed, you will not be notified when each
+     * DataSource runs out of data to provide to its PagedList.
+     * <p>
+     * If you are paging from a DataSource.Factory backed by local storage, you can set a
+     * BoundaryCallback to know when there is no more information to page from local storage.
+     * This is useful to page from the network when local storage is a cache of network data.
+     * <p>
+     * Note that when using a BoundaryCallback with a {@code LiveData<PagedList>}, method calls
+     * on the callback may be dispatched multiple times - one for each PagedList/DataSource
+     * pair. If loading network data from a BoundaryCallback, you should prevent multiple
+     * dispatches of the same method from triggering multiple simultaneous network loads.
+     *
+     * @param boundaryCallback The boundary callback for listening to PagedList load state.
+     * @return this
+     */
     @SuppressWarnings("unused")
     @NonNull
     public LivePagedListBuilder<Key, Value> setBoundaryCallback(
@@ -69,14 +115,17 @@ public class LivePagedListBuilder<Key, Value> {
         return this;
     }
 
-    @SuppressWarnings("unused")
-    @NonNull
-    public LivePagedListBuilder<Key, Value> setMainThreadExecutor(
-            @NonNull Executor mainThreadExecutor) {
-        mMainThreadExecutor = mainThreadExecutor;
-        return this;
-    }
-
+    /**
+     * Sets executor which will be used for background loading of pages.
+     * <p>
+     * If not set, defaults to the Arch components I/O thread.
+     * <p>
+     * Does not affect initial load, which will be always be done on done on the Arch components
+     * I/O thread.
+     *
+     * @param backgroundThreadExecutor Executor for background DataSource loading.
+     * @return this
+     */
     @SuppressWarnings("unused")
     @NonNull
     public LivePagedListBuilder<Key, Value> setBackgroundThreadExecutor(
@@ -85,6 +134,14 @@ public class LivePagedListBuilder<Key, Value> {
         return this;
     }
 
+    /**
+     * Constructs the {@code LiveData<PagedList>}.
+     * <p>
+     * No work (such as loading) is done immediately, the creation of the first PagedList is is
+     * deferred until the LiveData is observed.
+     *
+     * @return The LiveData of PagedLists
+     */
     @NonNull
     public LiveData<PagedList<Value>> build() {
         if (mConfig == null) {
@@ -93,20 +150,17 @@ public class LivePagedListBuilder<Key, Value> {
         if (mDataSourceFactory == null) {
             throw new IllegalArgumentException("DataSource.Factory must be provided");
         }
-        if (mMainThreadExecutor == null) {
-            mMainThreadExecutor = ArchTaskExecutor.getMainThreadExecutor();
-        }
         if (mBackgroundThreadExecutor == null) {
             mBackgroundThreadExecutor = ArchTaskExecutor.getIOThreadExecutor();
         }
 
         return create(mInitialLoadKey, mConfig, mBoundaryCallback, mDataSourceFactory,
-                mMainThreadExecutor, mBackgroundThreadExecutor);
+                ArchTaskExecutor.getMainThreadExecutor(), mBackgroundThreadExecutor);
     }
 
     @AnyThread
     @NonNull
-    public static <Key, Value> LiveData<PagedList<Value>> create(
+    private static <Key, Value> LiveData<PagedList<Value>> create(
             @Nullable final Key initialLoadKey,
             @NonNull final PagedList.Config config,
             @Nullable final PagedList.BoundaryCallback boundaryCallback,
@@ -143,12 +197,10 @@ public class LivePagedListBuilder<Key, Value> {
                     mDataSource = dataSourceFactory.create();
                     mDataSource.addInvalidatedCallback(mCallback);
 
-                    mList = new PagedList.Builder<Key, Value>()
-                            .setDataSource(mDataSource)
+                    mList = new PagedList.Builder<>(mDataSource, config)
                             .setMainThreadExecutor(mainThreadExecutor)
                             .setBackgroundThreadExecutor(backgroundThreadExecutor)
                             .setBoundaryCallback(boundaryCallback)
-                            .setConfig(config)
                             .setInitialKey(initializeKey)
                             .build();
                 } while (mList.isDetached());

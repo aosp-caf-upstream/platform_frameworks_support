@@ -15,26 +15,21 @@
  */
 
 import android.support.LibraryGroups
+import android.support.LibraryVersions
 
 plugins {
     id("SupportAndroidLibraryPlugin")
 }
 
 dependencies {
-    api fileTree(include: ['*.jar'], dir: 'libs')
-    api project(':support-emoji')
-    api project(':appcompat-v7')
-}
-
-android {
-    defaultConfig {
-        minSdkVersion 14
-    }
+    api(project(":support-emoji"))
+    api(project(":appcompat-v7"))
 }
 
 supportLibrary {
     name = "Android Emoji AppCompat"
     publish = true
+    mavenVersion = LibraryVersions.SUPPORT_LIBRARY
     mavenGroup = LibraryGroups.SUPPORT
     inceptionYear = "2017"
     description = "EmojiCompat Widgets for AppCompat integration"

@@ -483,6 +483,40 @@ class PojoProcessorTest {
     }
 
     @Test
+    fun relation_primitiveList() {
+        singleRun(
+                """
+                int id;
+                @Relation(parentColumn = "id", entityColumn = "uid",  projection={"uid"},
+                        entity = User.class)
+                public List<Integer> userIds;
+                """, COMMON.USER
+        ) { pojo ->
+            assertThat(pojo.relations.size, `is`(1))
+            val rel = pojo.relations.first()
+            assertThat(rel.projection, `is`(listOf("uid")))
+            assertThat(rel.entity.typeName, `is`(COMMON.USER_TYPE_NAME as TypeName))
+        }.compilesWithoutError()
+    }
+
+    @Test
+    fun relation_stringList() {
+        singleRun(
+                """
+                int id;
+                @Relation(parentColumn = "id", entityColumn = "uid",  projection={"name"},
+                        entity = User.class)
+                public List<String> userNames;
+                """, COMMON.USER
+        ) { pojo ->
+            assertThat(pojo.relations.size, `is`(1))
+            val rel = pojo.relations.first()
+            assertThat(rel.projection, `is`(listOf("name")))
+            assertThat(rel.entity.typeName, `is`(COMMON.USER_TYPE_NAME as TypeName))
+        }.compilesWithoutError()
+    }
+
+    @Test
     fun cache() {
         val pojo = """
             $HEADER
@@ -523,7 +557,7 @@ class PojoProcessorTest {
                     affinity = SQLTypeAffinity.TEXT,
                     columnName = "foo",
                     parent = null,
-                    indexed =  false
+                    indexed = false
             )
             val fakeEmbedded = EmbeddedField(fakeField, "", null)
 
@@ -552,7 +586,7 @@ class PojoProcessorTest {
     }
 
     @Test
-    fun constructor_ambiguous_twoFieldsExcatMatch() {
+    fun constructor_ambiguous_twoFieldsExactMatch() {
         val pojoCode = """
             public String mName;
             public String _name;
@@ -562,7 +596,7 @@ class PojoProcessorTest {
         singleRun(pojoCode) { pojo ->
             val param = pojo.constructor?.params?.first()
             assertThat(param, instanceOf(Constructor.FieldParam::class.java))
-            assertThat((param as Constructor.FieldParam).field.name,  `is`("mName"))
+            assertThat((param as Constructor.FieldParam).field.name, `is`("mName"))
             assertThat(pojo.fields.find { it.name == "mName" }?.setter?.callType,
                     `is`(CallType.CONSTRUCTOR))
         }.compilesWithoutError()
@@ -579,7 +613,7 @@ class PojoProcessorTest {
         singleRun(pojoCode) { pojo ->
             val param = pojo.constructor?.params?.first()
             assertThat(param, instanceOf(Constructor.FieldParam::class.java))
-            assertThat((param as Constructor.FieldParam).field.name,  `is`("mName"))
+            assertThat((param as Constructor.FieldParam).field.name, `is`("mName"))
             assertThat(pojo.fields.find { it.name == "mName" }?.setter?.callType,
                     `is`(CallType.CONSTRUCTOR))
         }.compilesWithoutError()
@@ -708,14 +742,43 @@ class PojoProcessorTest {
                 ProcessorErrors.TOO_MANY_POJO_CONSTRUCTORS_CHOOSING_NO_ARG)
     }
 
+    @Test // added for b/69562125
+    fun constructor_withNullabilityAnnotation() {
+        singleRun("""
+            String mName;
+            public MyPojo(@android.support.annotation.NonNull String name) {}
+            """) { pojo ->
+            val constructor = pojo.constructor
+            assertThat(constructor, notNullValue())
+            assertThat(constructor!!.params.size, `is`(1))
+        }.compilesWithoutError()
+    }
+
+    @Test // b/69118713 common mistake so we better provide a good explanation
+    fun constructor_relationParameter() {
+        singleRun("""
+            @Relation(entity = foo.bar.User.class, parentColumn = "uid", entityColumn="uid",
+            projection = "name")
+            public List<String> items;
+            public String uid;
+            public MyPojo(String uid, List<String> items) {
+            }
+            """, COMMON.USER) { _ ->
+        }.failsToCompile().withErrorContaining(
+                ProcessorErrors.RELATION_CANNOT_BE_CONSTRUCTOR_PARAMETER
+        )
+    }
+
     @Test
     fun recursion_1Level() {
         singleRun(
                 """
                 @Embedded
                 MyPojo myPojo;
-                """){ _, _ ->
-        }.failsToCompile().withErrorContaining(ProcessorErrors.RECURSIVE_REFERENCE_DETECTED.format("foo.bar.MyPojo -> foo.bar.MyPojo"))
+                """) { _, _ ->
+        }.failsToCompile().withErrorContaining(
+                ProcessorErrors.RECURSIVE_REFERENCE_DETECTED.format(
+                        "foo.bar.MyPojo -> foo.bar.MyPojo"))
     }
 
     @Test
@@ -734,8 +797,10 @@ class PojoProcessorTest {
                     @Embedded
                     MyPojo myPojo;
                 }
-                """){ _, _ ->
-        }.failsToCompile().withErrorContaining(ProcessorErrors.RECURSIVE_REFERENCE_DETECTED.format("foo.bar.MyPojo -> foo.bar.MyPojo.MyEntity -> foo.bar.MyPojo"))
+                """) { _, _ ->
+        }.failsToCompile().withErrorContaining(
+                ProcessorErrors.RECURSIVE_REFERENCE_DETECTED.format(
+                        "foo.bar.MyPojo -> foo.bar.MyPojo.MyEntity -> foo.bar.MyPojo"))
     }
 
     @Test
@@ -750,8 +815,10 @@ class PojoProcessorTest {
                     @Embedded
                     MyPojo myPojo;
                 }
-                """){ _, _ ->
-        }.failsToCompile().withErrorContaining(ProcessorErrors.RECURSIVE_REFERENCE_DETECTED.format("foo.bar.MyPojo -> foo.bar.MyPojo.A -> foo.bar.MyPojo"))
+                """) { _, _ ->
+        }.failsToCompile().withErrorContaining(
+                ProcessorErrors.RECURSIVE_REFERENCE_DETECTED.format(
+                        "foo.bar.MyPojo -> foo.bar.MyPojo.A -> foo.bar.MyPojo"))
     }
 
     @Test
@@ -764,8 +831,10 @@ class PojoProcessorTest {
                     @Embedded
                     MyPojo myPojo;
                 }
-                """){ _, _ ->
-        }.failsToCompile().withErrorContaining(ProcessorErrors.RECURSIVE_REFERENCE_DETECTED.format("foo.bar.MyPojo -> foo.bar.MyPojo.A -> foo.bar.MyPojo"))
+                """) { _, _ ->
+        }.failsToCompile().withErrorContaining(
+                ProcessorErrors.RECURSIVE_REFERENCE_DETECTED.format(
+                        "foo.bar.MyPojo -> foo.bar.MyPojo.A -> foo.bar.MyPojo"))
     }
 
     @Test
@@ -782,8 +851,10 @@ class PojoProcessorTest {
                     @Embedded
                     MyPojo myPojo;
                 }
-                """){ _, _ ->
-        }.failsToCompile().withErrorContaining(ProcessorErrors.RECURSIVE_REFERENCE_DETECTED.format("foo.bar.MyPojo -> foo.bar.MyPojo.A -> foo.bar.MyPojo.B -> foo.bar.MyPojo"))
+                """) { _, _ ->
+        }.failsToCompile().withErrorContaining(
+                ProcessorErrors.RECURSIVE_REFERENCE_DETECTED.format(
+                        "foo.bar.MyPojo -> foo.bar.MyPojo.A -> foo.bar.MyPojo.B -> foo.bar.MyPojo"))
     }
 
     @Test
@@ -800,8 +871,10 @@ class PojoProcessorTest {
                     @Embedded
                     A a;
                 }
-                """){ _, _ ->
-        }.failsToCompile().withErrorContaining(ProcessorErrors.RECURSIVE_REFERENCE_DETECTED.format("foo.bar.MyPojo.A -> foo.bar.MyPojo.B -> foo.bar.MyPojo.A"))
+                """) { _, _ ->
+        }.failsToCompile().withErrorContaining(
+                ProcessorErrors.RECURSIVE_REFERENCE_DETECTED.format(
+                        "foo.bar.MyPojo.A -> foo.bar.MyPojo.B -> foo.bar.MyPojo.A"))
     }
 
     @Test
@@ -824,8 +897,10 @@ class PojoProcessorTest {
                     @Embedded
                     MyPojo myPojo;
                 }
-                """){ _, _ ->
-        }.failsToCompile().withErrorContaining(ProcessorErrors.RECURSIVE_REFERENCE_DETECTED.format("foo.bar.MyPojo -> foo.bar.MyPojo.C -> foo.bar.MyPojo"))
+                """) { _, _ ->
+        }.failsToCompile().withErrorContaining(
+                ProcessorErrors.RECURSIVE_REFERENCE_DETECTED.format(
+                        "foo.bar.MyPojo -> foo.bar.MyPojo.C -> foo.bar.MyPojo"))
     }
 
     @Test
@@ -848,19 +923,22 @@ class PojoProcessorTest {
                 }
                 static class C {
                 }
-                """){ _, _ ->
-        }.failsToCompile().withErrorContaining(ProcessorErrors.RECURSIVE_REFERENCE_DETECTED.format("foo.bar.MyPojo -> foo.bar.MyPojo.A -> foo.bar.MyPojo"))
+                """) { _, _ ->
+        }.failsToCompile().withErrorContaining(
+                ProcessorErrors.RECURSIVE_REFERENCE_DETECTED.format(
+                        "foo.bar.MyPojo -> foo.bar.MyPojo.A -> foo.bar.MyPojo"))
     }
 
-    fun singleRun(code: String, vararg jfos:JavaFileObject, handler: (Pojo) -> Unit)
-            : CompileTester {
+    fun singleRun(
+            code: String, vararg jfos: JavaFileObject, handler: (Pojo) -> Unit): CompileTester {
         return singleRun(code, *jfos) { pojo, _ ->
             handler(pojo)
         }
     }
 
-    fun singleRun(code: String, vararg jfos:JavaFileObject,
-                  handler: (Pojo, TestInvocation) -> Unit): CompileTester {
+    fun singleRun(
+            code: String, vararg jfos: JavaFileObject,
+            handler: (Pojo, TestInvocation) -> Unit): CompileTester {
         val pojoJFO = """
                 $HEADER
                 $code

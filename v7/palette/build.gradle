@@ -1,27 +1,23 @@
+import static android.support.dependencies.DependenciesKt.*
 import android.support.LibraryGroups
+import android.support.LibraryVersions
 
 plugins {
     id("SupportAndroidLibraryPlugin")
 }
 
 dependencies {
-    api project(':support-compat')
-    api project(':support-core-utils')
+    api(project(":support-compat"))
+    api(project(":support-core-utils"))
 
-    androidTestImplementation libs.test_runner, { exclude module: 'support-annotations' }
-}
-
-android {
-    defaultConfig {
-        minSdkVersion 14
-    }
+    androidTestImplementation(TEST_RUNNER)
 }
 
 supportLibrary {
     name = "Android Support Palette v7"
     publish = true
+    mavenVersion = LibraryVersions.SUPPORT_LIBRARY
     mavenGroup = LibraryGroups.SUPPORT
     inceptionYear = "2014"
     description = "Android Support Palette v7"
-    legacySourceLocation = true
 }

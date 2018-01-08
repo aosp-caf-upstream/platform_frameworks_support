@@ -16,10 +16,12 @@
 
 package android.arch.paging;
 
+import android.support.annotation.NonNull;
+
 import java.util.ArrayList;
 import java.util.List;
 
-public class ListDataSource<T> extends TiledDataSource<T> {
+class ListDataSource<T> extends PositionalDataSource<T> {
     private final List<T> mList;
 
     public ListDataSource(List<T> list) {
@@ -27,13 +29,23 @@ public class ListDataSource<T> extends TiledDataSource<T> {
     }
 
     @Override
-    public int countItems() {
-        return mList.size();
+    public void loadInitial(@NonNull LoadInitialParams params,
+            @NonNull LoadInitialCallback<T> callback) {
+        final int totalCount = mList.size();
+
+        final int position = computeInitialLoadPosition(params, totalCount);
+        final int loadSize = computeInitialLoadSize(params, position, totalCount);
+
+        // for simplicity, we could return everything immediately,
+        // but we tile here since it's expected behavior
+        List<T> sublist = mList.subList(position, position + loadSize);
+        callback.onResult(sublist, position, totalCount);
     }
 
     @Override
-    public List<T> loadRange(int startPosition, int count) {
-        int endExclusive = Math.min(mList.size(), startPosition + count);
-        return mList.subList(startPosition, endExclusive);
+    public void loadRange(@NonNull LoadRangeParams params,
+            @NonNull LoadRangeCallback<T> callback) {
+        callback.onResult(mList.subList(params.startPosition,
+                params.startPosition + params.loadSize));
     }
 }

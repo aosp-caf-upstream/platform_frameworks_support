@@ -1,4 +1,6 @@
+import static android.support.dependencies.DependenciesKt.*
 import android.support.LibraryGroups
+import android.support.LibraryVersions
 
 plugins {
     id("SupportAndroidLibraryPlugin")
@@ -11,18 +13,18 @@ dependencies {
     api project(':support-v4')
     api project(':recyclerview-v7')
 
-    androidTestImplementation libs.test_runner,      { exclude module: 'support-annotations' }
-    androidTestImplementation libs.espresso_core,    { exclude module: 'support-annotations' }
-    androidTestImplementation libs.espresso_contrib, { exclude group: 'com.android.support' }
-    androidTestImplementation libs.mockito_core,     { exclude group: 'net.bytebuddy' } // DexMaker has it"s own MockMaker
-    androidTestImplementation libs.dexmaker_mockito, { exclude group: 'net.bytebuddy' } // DexMaker has it"s own MockMaker
+    androidTestImplementation(TEST_RUNNER)
+    androidTestImplementation(ESPRESSO_CORE)
+    androidTestImplementation(ESPRESSO_CONTRIB, libs.exclude_support)
+    androidTestImplementation(MOCKITO_CORE, libs.exclude_bytebuddy) // DexMaker has it"s own MockMaker
+    androidTestImplementation(DEXMAKER_MOCKITO, libs.exclude_bytebuddy) // DexMaker has it"s own MockMaker
+
+    testImplementation(JUNIT)
+    testImplementation(TEST_RUNNER)
+    testImplementation(MOCKITO_CORE)
 }
 
 android {
-    defaultConfig {
-        minSdkVersion 24
-    }
-
     sourceSets {
         main.res.srcDirs 'res', 'res-public'
     }
@@ -31,9 +33,11 @@ android {
 supportLibrary {
     name = "Android Car Support UI"
     publish = false
+    mavenVersion = LibraryVersions.SUPPORT_LIBRARY
     mavenGroup = LibraryGroups.SUPPORT
     inceptionYear = "2017"
     description = "Android Car Support UI"
     java8Library = true
     legacySourceLocation = true
+    minSdkVersion = 24
 }

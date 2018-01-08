@@ -13,35 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-apply plugin: 'com.android.application'
-apply plugin: 'kotlin-kapt'
-apply plugin: 'kotlin-android'
 
-project.ext.noDocs = true
+import static android.support.dependencies.DependenciesKt.*
+
+plugins {
+    id("SupportAndroidTestAppPlugin")
+    id("kotlin-kapt")
+    id("kotlin-android")
+}
 
 android {
-    compileSdkVersion tools.current_sdk
-    buildToolsVersion tools.build_tools_version
-
     defaultConfig {
-        minSdkVersion flatfoot.min_sdk
-        targetSdkVersion tools.current_sdk
-        versionCode 1
-        versionName "1.0"
-
-        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
         javaCompileOptions {
             annotationProcessorOptions {
                 arguments = ["room.schemaLocation": "$projectDir/schemas".toString()]
             }
         }
-    }
-    testOptions {
-        unitTests.returnDefaultValues = true
-    }
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_7
-        targetCompatibility JavaVersion.VERSION_1_7
     }
     sourceSets {
         androidTest.assets.srcDirs += files("$projectDir/schemas".toString())
@@ -49,21 +36,21 @@ android {
 }
 
 dependencies {
-    implementation project(":room:common")
-    implementation project(":persistence:db")
-    implementation project(":persistence:db-framework")
-    implementation project(':room:runtime')
-    implementation project(':arch:runtime')
+    implementation(project(":room:common"))
+    implementation(project(":persistence:db"))
+    implementation(project(":persistence:db-framework"))
+    implementation(project(":room:runtime"))
+    implementation(project(":arch:runtime"))
 
-    implementation libs.support.app_compat, libs.support_exclude_config
+    implementation(SUPPORT_APPCOMPAT, libs.support_exclude_config)
     kapt project(":room:compiler")
     kaptAndroidTest project(":room:compiler")
 
-    androidTestCompile(libs.test_runner) {
+    androidTestImplementation(TEST_RUNNER) {
         exclude module: 'support-annotations'
         exclude module: 'hamcrest-core'
     }
-    androidTestCompile(libs.espresso_core, {
+    androidTestImplementation(ESPRESSO_CORE, {
         exclude group: 'com.android.support', module: 'support-annotations'
         exclude module: "hamcrest-core"
     })
@@ -74,12 +61,10 @@ dependencies {
     androidTestImplementation project(':room:testing')
     androidTestImplementation project(':room:rxjava2')
     androidTestImplementation project(':arch:core-testing')
-    androidTestImplementation libs.rx_java
-    testImplementation libs.mockito_core
+    androidTestImplementation(RX_JAVA)
+    testImplementation(MOCKITO_CORE)
 }
 
-createAndroidCheckstyle(project)
-createKotlinCheckstyle(project)
 tasks['check'].dependsOn(tasks['connectedCheck'])
 
 uploadArchives.enabled = false

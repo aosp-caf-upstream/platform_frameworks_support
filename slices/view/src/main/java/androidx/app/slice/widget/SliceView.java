@@ -16,29 +16,29 @@
 
 package androidx.app.slice.widget;
 
-import android.app.slice.Slice;
-import android.app.slice.SliceItem;
+import static android.app.slice.Slice.HINT_ACTIONS;
+import static android.app.slice.Slice.HINT_HORIZONTAL;
+import static android.app.slice.Slice.SUBTYPE_COLOR;
+import static android.app.slice.SliceItem.FORMAT_INT;
+import static android.app.slice.SliceItem.FORMAT_SLICE;
+
+import android.arch.lifecycle.Observer;
 import android.content.ContentResolver;
 import android.content.Context;
-import android.content.Intent;
-import android.database.ContentObserver;
 import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
-import android.os.Handler;
-import android.os.Looper;
 import android.support.annotation.IntDef;
-import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.annotation.RestrictTo;
-import android.support.v4.util.Preconditions;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.FrameLayout;
 
 import java.util.List;
 
+import androidx.app.slice.Slice;
+import androidx.app.slice.SliceItem;
 import androidx.app.slice.core.SliceQuery;
 import androidx.app.slice.view.R;
 
@@ -59,23 +59,21 @@ import androidx.app.slice.view.R;
  * <p>
  * When constructing a slice, the contents of it can be annotated with hints, these provide the OS
  * with some information on how the content should be displayed. For example, text annotated with
- * {@link Slice#HINT_TITLE} would be placed in the title position of a template. A slice annotated
- * with {@link Slice#HINT_LIST} would present the child items of that slice in a list.
- * <p>
- * SliceView can be provided a slice via a uri {@link #setSlice(Uri)} in which case a content
- * observer will be set for that uri and the view will update if there are any changes to the slice.
- * To use this the app must have a special permission to bind to the slice (see
- * {@link android.Manifest.permission#BIND_SLICE}).
+ * {@link android.app.slice.Slice#HINT_TITLE} would be placed in the title position of a template.
+ * A slice annotated with {@link android.app.slice.Slice#HINT_LIST} would present the child items
+ * of that slice in a list.
  * <p>
  * Example usage:
  *
  * <pre class="prettyprint">
  * SliceView v = new SliceView(getContext());
  * v.setMode(desiredMode);
- * v.setSlice(sliceUri);
+ * LiveData<Slice> liveData = SliceLiveData.fromUri(sliceUri);
+ * liveData.observe(lifecycleOwner, v);
  * </pre>
+ * @see SliceLiveData
  */
-public class SliceView extends ViewGroup {
+public class SliceView extends ViewGroup implements Observer<Slice> {
 
     private static final String TAG = "SliceView";
 
@@ -83,21 +81,22 @@ public class SliceView extends ViewGroup {
      * @hide
      */
     @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public abstract static class SliceModeView extends FrameLayout {
-
-        public SliceModeView(Context context) {
-            super(context);
-        }
+    public interface SliceModeView {
 
         /**
          * @return the mode of the slice being presented.
          */
-        public abstract int getMode();
+        int getMode();
 
         /**
          * @param slice the slice to show in this view.
          */
-        public abstract void setSlice(Slice slice);
+        void setSlice(Slice slice);
+
+        /**
+         * @return the view.
+         */
+        View getView();
     }
 
     /**
@@ -118,7 +117,9 @@ public class SliceView extends ViewGroup {
      */
     public static final int MODE_LARGE       = 2;
     /**
-     * Mode indicating this slice should be presented as an icon.
+     * Mode indicating this slice should be presented as an icon. A shortcut requires an intent,
+     * icon, and label. This can be indicated by using {@link android.app.slice.Slice#HINT_TITLE}
+     * on an action in a slice.
      */
     public static final int MODE_SHORTCUT    = 3;
 
@@ -134,7 +135,6 @@ public class SliceView extends ViewGroup {
     private Slice mCurrentSlice;
     private boolean mShowActions = true;
     private boolean mIsScrollable;
-    private SliceObserver mObserver;
     private final int mShortcutSize;
 
     public SliceView(Context context) {
@@ -151,11 +151,10 @@ public class SliceView extends ViewGroup {
 
     public SliceView(Context context, AttributeSet attrs, int defStyleAttr, int defStyleRes) {
         super(context, attrs, defStyleAttr, defStyleRes);
-        mObserver = new SliceObserver(new Handler(Looper.getMainLooper()));
         mActions = new ActionRow(getContext(), true);
         mActions.setBackground(new ColorDrawable(0xffeeeeee));
         mCurrentView = new LargeTemplateView(getContext());
-        addView(mCurrentView, getChildLp(mCurrentView));
+        addView(mCurrentView.getView(), getChildLp(mCurrentView.getView()));
         addView(mActions, getChildLp(mActions));
         mShortcutSize = getContext().getResources()
                 .getDimensionPixelSize(R.dimen.abc_slice_shortcut_size);
@@ -163,94 +162,48 @@ public class SliceView extends ViewGroup {
 
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+        int mode = MeasureSpec.getMode(widthMeasureSpec);
+        int width = MeasureSpec.getSize(widthMeasureSpec);
+        if (MODE_SHORTCUT == mMode) {
+            width = mShortcutSize;
+        }
+        if (mode == MeasureSpec.AT_MOST || mode == MeasureSpec.UNSPECIFIED) {
+            widthMeasureSpec = MeasureSpec.makeMeasureSpec(width, MeasureSpec.EXACTLY);
+        }
         measureChildren(widthMeasureSpec, heightMeasureSpec);
         int actionHeight = mActions.getVisibility() != View.GONE
                 ? mActions.getMeasuredHeight()
                 : 0;
         int newHeightSpec = MeasureSpec.makeMeasureSpec(
-                mCurrentView.getMeasuredHeight() + actionHeight, MeasureSpec.EXACTLY);
-        int width = MeasureSpec.getSize(widthMeasureSpec);
+                mCurrentView.getView().getMeasuredHeight() + actionHeight, MeasureSpec.EXACTLY);
         setMeasuredDimension(width, newHeightSpec);
     }
 
     @Override
     protected void onLayout(boolean changed, int l, int t, int r, int b) {
-        mCurrentView.layout(l, t, l + mCurrentView.getMeasuredWidth(),
-                t + mCurrentView.getMeasuredHeight());
+        View v = mCurrentView.getView();
+        v.layout(0, 0, v.getMeasuredWidth(),
+                v.getMeasuredHeight());
         if (mActions.getVisibility() != View.GONE) {
-            mActions.layout(l, mCurrentView.getMeasuredHeight(), l + mActions.getMeasuredWidth(),
-                    mCurrentView.getMeasuredHeight() + mActions.getMeasuredHeight());
+            mActions.layout(0, v.getMeasuredHeight(), mActions.getMeasuredWidth(),
+                    v.getMeasuredHeight() + mActions.getMeasuredHeight());
         }
     }
 
-    /**
-     * @hide
-     */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public void showSlice(Intent intent) {
-        // TODO
-    }
-
-    /**
-     * Populates this view with the {@link Slice} associated with the provided {@link Uri}. To use
-     * this method your app must have the permission
-     * {@link android.Manifest.permission#BIND_SLICE}).
-     * <p>
-     * Setting a slice differs from {@link #showSlice(Slice)} because it will ensure the view is
-     * updated when the slice identified by the provided URI changes. The lifecycle of this observer
-     * is handled by SliceView in {@link #onAttachedToWindow()} and {@link #onDetachedFromWindow()}.
-     * To unregister this observer outside of that you can call {@link #clearSlice}.
-     *
-     * @return true if the a slice was found for the provided uri.
-     * @see #clearSlice
-     */
-    public boolean setSlice(@NonNull Uri sliceUri) {
-        Preconditions.checkNotNull(sliceUri,
-                "Uri cannot be null, to remove the slice use clearSlice()");
-        if (sliceUri == null) {
-            clearSlice();
-            return false;
-        }
-        validate(sliceUri);
-        Slice s = Slice.bindSlice(getContext().getContentResolver(), sliceUri);
-        if (s != null) {
-            mObserver = new SliceObserver(new Handler(Looper.getMainLooper()));
-            if (isAttachedToWindow()) {
-                registerSlice(sliceUri);
-            }
-            showSlice(s);
-        }
-        return s != null;
+    @Override
+    public void onChanged(@Nullable Slice slice) {
+        setSlice(slice);
     }
 
     /**
      * Populates this view to the provided {@link Slice}.
-     * <p>
-     * This does not register a content observer on the URI that the slice is backed by so it will
-     * not update if the content changes. To have the view update when the content changes use
-     * {@link #setSlice(Uri)} instead. Unlike {@link #setSlice(Uri)}, this method does not require
-     * any special permissions.
+     *
+     * This will not update automatically if the slice content changes, for live
+     * content see {@link SliceLiveData}.
      */
-    public void showSlice(@NonNull Slice slice) {
-        Preconditions.checkNotNull(slice,
-                "Slice cannot be null, to remove the slice use clearSlice()");
-        clearSlice();
+    public void setSlice(@Nullable Slice slice) {
         mCurrentSlice = slice;
         reinflate();
-    }
-
-    /**
-     * Unregisters the change observer that is set when using {@link #setSlice}. Normally this is
-     * done automatically during {@link #onDetachedFromWindow()}.
-     * <p>
-     * It is safe to call this method multiple times.
-     */
-    public void clearSlice() {
-        mCurrentSlice = null;
-        if (mObserver != null) {
-            getContext().getContentResolver().unregisterContentObserver(mObserver);
-            mObserver = null;
-        }
     }
 
     /**
@@ -306,32 +259,14 @@ public class SliceView extends ViewGroup {
             case MODE_SHORTCUT:
                 return new ShortcutView(getContext());
             case MODE_SMALL:
-                return new SmallTemplateView(getContext());
+                // Check if it's horizontal
+                if (SliceQuery.hasHints(mCurrentSlice, HINT_HORIZONTAL)) {
+                    return new GridRowView(getContext());
+                } else {
+                    return new RowView(getContext());
+                }
         }
         return new LargeTemplateView(getContext());
-    }
-
-    @Override
-    protected void onAttachedToWindow() {
-        super.onAttachedToWindow();
-        registerSlice(mCurrentSlice != null ? mCurrentSlice.getUri() : null);
-    }
-
-    @Override
-    protected void onDetachedFromWindow() {
-        super.onDetachedFromWindow();
-        if (mObserver != null) {
-            getContext().getContentResolver().unregisterContentObserver(mObserver);
-            mObserver = null;
-        }
-    }
-
-    private void registerSlice(Uri sliceUri) {
-        if (sliceUri == null || mObserver == null) {
-            return;
-        }
-        getContext().getContentResolver().registerContentObserver(sliceUri,
-                false /* notifyForDescendants */, mObserver);
     }
 
     private void reinflate() {
@@ -339,26 +274,28 @@ public class SliceView extends ViewGroup {
             return;
         }
         // TODO: Smarter mapping here from one state to the next.
-        SliceItem color = SliceQuery.find(mCurrentSlice, SliceItem.TYPE_COLOR);
+        SliceItem color = SliceQuery.findSubtype(mCurrentSlice, FORMAT_INT, SUBTYPE_COLOR);
         List<SliceItem> items = mCurrentSlice.getItems();
-        SliceItem actionRow = SliceQuery.find(mCurrentSlice, SliceItem.TYPE_SLICE,
-                Slice.HINT_ACTIONS,
+        SliceItem actionRow = SliceQuery.find(mCurrentSlice, FORMAT_SLICE,
+                HINT_ACTIONS,
                 null);
         int mode = getMode();
-        if (mode != mCurrentView.getMode()) {
+        if (mMode == mCurrentView.getMode()) {
+            mCurrentView.setSlice(mCurrentSlice);
+        } else {
             removeAllViews();
             mCurrentView = createView(mode);
-            addView(mCurrentView, getChildLp(mCurrentView));
+            addView(mCurrentView.getView(), getChildLp(mCurrentView.getView()));
             addView(mActions, getChildLp(mActions));
         }
         if (mode == MODE_LARGE) {
             ((LargeTemplateView) mCurrentView).setScrollable(mIsScrollable);
         }
         if (items.size() > 1 || (items.size() != 0 && items.get(0) != actionRow)) {
-            mCurrentView.setVisibility(View.VISIBLE);
+            mCurrentView.getView().setVisibility(View.VISIBLE);
             mCurrentView.setSlice(mCurrentSlice);
         } else {
-            mCurrentView.setVisibility(View.GONE);
+            mCurrentView.getView().setVisibility(View.GONE);
         }
 
         boolean showActions = mShowActions && actionRow != null
@@ -385,24 +322,6 @@ public class SliceView extends ViewGroup {
         }
         if (sliceUri.getPathSegments().size() == 0) {
             throw new RuntimeException("Invalid uri " + sliceUri);
-        }
-    }
-
-    private class SliceObserver extends ContentObserver {
-        SliceObserver(Handler handler) {
-            super(handler);
-        }
-
-        @Override
-        public void onChange(boolean selfChange) {
-            this.onChange(selfChange, null);
-        }
-
-        @Override
-        public void onChange(boolean selfChange, Uri uri) {
-            Slice s = Slice.bindSlice(getContext().getContentResolver(), uri);
-            mCurrentSlice = s;
-            reinflate();
         }
     }
 }

@@ -1,38 +1,34 @@
+import static android.support.dependencies.DependenciesKt.*
 import android.support.LibraryGroups
+import android.support.LibraryVersions
 
 plugins {
     id("SupportAndroidLibraryPlugin")
 }
 
 dependencies {
-    api project(':support-annotations')
-    api project(':support-compat')
+    api(project(":support-annotations"))
+    api(project(":support-compat"))
     api project(':support-core-utils')
 
-    androidTestImplementation libs.test_runner,      { exclude module: 'support-annotations' }
-    androidTestImplementation libs.espresso_core,    { exclude module: 'support-annotations' }
-    androidTestImplementation libs.espresso_contrib, { exclude group: 'com.android.support' }
-    androidTestImplementation libs.mockito_core,     { exclude group: 'net.bytebuddy' } // DexMaker has it"s own MockMaker
-    androidTestImplementation libs.dexmaker_mockito, { exclude group: 'net.bytebuddy' } // DexMaker has it"s own MockMaker
+    androidTestImplementation(TEST_RUNNER)
+    androidTestImplementation(ESPRESSO_CORE)
+    androidTestImplementation(ESPRESSO_CONTRIB, libs.exclude_support)
+    androidTestImplementation(DEXMAKER_MOCKITO, libs.exclude_bytebuddy) // DexMaker has it"s own MockMaker
     androidTestImplementation project(':support-testutils'), {
         exclude group: 'com.android.support', module: 'support-core-ui'
     }
 
-    testImplementation libs.junit
+    testImplementation(JUNIT)
 }
 
 android {
-    defaultConfig {
-        minSdkVersion 14
-    }
-
     sourceSets {
         main.res.srcDirs = [
                 'res',
                 'res-public'
         ]
     }
-
     buildTypes.all {
         consumerProguardFiles 'proguard-rules.pro'
     }
@@ -41,6 +37,7 @@ android {
 supportLibrary {
     name = "Android Support Library core UI"
     publish = true
+    mavenVersion = LibraryVersions.SUPPORT_LIBRARY
     mavenGroup = LibraryGroups.SUPPORT
     inceptionYear = "2011"
     description = "The Support Library is a static library that you can add to your Android application in order to use APIs that are either not available for older platform versions or utility APIs that aren't a part of the framework APIs. Compatible on devices running API 14 or later."

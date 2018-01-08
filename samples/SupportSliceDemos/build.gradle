@@ -14,39 +14,28 @@
  * limitations under the License.
  */
 
-apply plugin: 'com.android.application'
+import static android.support.dependencies.DependenciesKt.*
+
+plugins {
+    id("SupportAndroidTestAppPlugin")
+}
 
 dependencies {
-    implementation project(':slices-view')
-    implementation project(':slices-builders')
-    implementation project(':design')
-    implementation project(':appcompat-v7')
-    implementation project(':cardview-v7')
+    implementation(project(":slices-view"))
+    implementation(project(":slices-builders"))
+    implementation(project(":slices-core"))
+    implementation(project(":design"))
+    implementation(project(":appcompat-v7"))
+    implementation(project(":cardview-v7"))
+    api(ARCH_LIFECYCLE_EXTENSIONS, libs.exclude_annotations_transitive)
 }
 
 android {
-    compileSdkVersion project.ext.currentSdk
-
     defaultConfig {
         applicationId "com.example.androidx.slice.demos"
-        minSdkVersion 27
-        targetSdkVersion project.ext.currentSdk
     }
+}
 
-    signingConfigs {
-        debug {
-            // Use a local debug keystore to avoid build server issues.
-            storeFile project.rootProject.init.debugKeystore
-        }
-    }
-
-    lintOptions {
-        abortOnError true
-        disable "SetTextI18n", "AppCompatResource", "WrongConstant", "AllowBackup",
-                "GoogleAppIndexingWarning", "AlwaysShowAction"
-    }
-    compileOptions {
-        targetCompatibility 1.8
-        sourceCompatibility 1.8
-    }
+supportTestApp {
+    minSdkVersion = 26
 }

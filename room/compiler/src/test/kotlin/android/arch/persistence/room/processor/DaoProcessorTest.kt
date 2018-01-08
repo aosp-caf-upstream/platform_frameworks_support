@@ -36,7 +36,7 @@ import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
 
 @RunWith(Parameterized::class)
-class DaoProcessorTest(val enableVerification : Boolean) {
+class DaoProcessorTest(val enableVerification: Boolean) {
     companion object {
         const val DAO_PREFIX = """
             package foo.bar;
@@ -75,7 +75,7 @@ class DaoProcessorTest(val enableVerification : Boolean) {
                 }
         """) { _, _ ->
         }.failsToCompile().withErrorContaining(
-                ProcessorErrors.CANNOT_USE_MORE_THAN_ONE_DAO_METHOD_ANNOTATION)
+                ProcessorErrors.INVALID_ANNOTATION_COUNT_IN_DAO_METHOD)
     }
 
     @Test

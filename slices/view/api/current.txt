@@ -1,0 +1,43 @@
+package androidx.app.slice {
+
+  public class SliceUtils {
+    method public static androidx.app.slice.Slice parseSlice(java.io.InputStream, java.lang.String) throws java.io.IOException;
+    method public static void serializeSlice(androidx.app.slice.Slice, android.content.Context, java.io.OutputStream, java.lang.String, androidx.app.slice.SliceUtils.SerializeOptions) throws java.io.IOException;
+  }
+
+  public static class SliceUtils.SerializeOptions {
+    ctor public SliceUtils.SerializeOptions();
+    method public androidx.app.slice.SliceUtils.SerializeOptions setActionMode(int);
+    method public androidx.app.slice.SliceUtils.SerializeOptions setImageMode(int);
+    field public static final int MODE_DISABLE = 2; // 0x2
+    field public static final int MODE_REMOVE = 1; // 0x1
+    field public static final int MODE_THROW = 0; // 0x0
+  }
+
+}
+
+package androidx.app.slice.widget {
+
+  public final class SliceLiveData {
+    ctor public SliceLiveData();
+    method public static android.arch.lifecycle.LiveData<androidx.app.slice.Slice> fromIntent(android.content.Context, android.content.Intent);
+    method public static android.arch.lifecycle.LiveData<androidx.app.slice.Slice> fromUri(android.content.Context, android.net.Uri);
+  }
+
+  public class SliceView extends android.view.ViewGroup implements android.arch.lifecycle.Observer {
+    ctor public SliceView(android.content.Context);
+    ctor public SliceView(android.content.Context, android.util.AttributeSet);
+    ctor public SliceView(android.content.Context, android.util.AttributeSet, int);
+    ctor public SliceView(android.content.Context, android.util.AttributeSet, int, int);
+    method public int getMode();
+    method public void onChanged(androidx.app.slice.Slice);
+    method public void setMode(int);
+    method public void setScrollable(boolean);
+    method public void setSlice(androidx.app.slice.Slice);
+    field public static final int MODE_LARGE = 2; // 0x2
+    field public static final int MODE_SHORTCUT = 3; // 0x3
+    field public static final int MODE_SMALL = 1; // 0x1
+  }
+
+}
+

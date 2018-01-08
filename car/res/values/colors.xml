@@ -63,6 +63,10 @@
     <color name="car_title_dark">@color/car_grey_900</color>
     <color name="car_title">@color/car_title_dark</color>
 
+    <color name="car_title2_light">@color/car_grey_100</color>
+    <color name="car_title2_dark">@color/car_grey_900</color>
+    <color name="car_title2">@color/car_title2_dark</color>
+
     <color name="car_headline1_light">@color/car_grey_100</color>
     <color name="car_headline1_dark">@color/car_grey_800</color>
     <color name="car_headline1">@color/car_headline1_dark</color>
@@ -95,8 +99,8 @@
     <color name="car_body4_dark">@android:color/black</color>
     <color name="car_body4">@color/car_body4_dark</color>
 
-    <color name="car_action1_light">@color/car_grey_900</color>
-    <color name="car_action1_dark">@color/car_grey_50</color>
+    <color name="car_action1_light">@color/car_grey_50</color>
+    <color name="car_action1_dark">@color/car_grey_900</color>
     <color name="car_action1">@color/car_action1_dark</color>
 
     <!-- The tinting colors to create a light- and dark-colored icon respectively. -->
@@ -108,6 +112,9 @@
 
     <!-- An inverted tinting from car_tint. -->
     <color name="car_tint_inverse">@color/car_tint_light</color>
+
+    <!-- The color of the list header.-->
+    <color name="car_list_header">@color/car_blue_500</color>
 
     <!-- The color of the divider. The color here is a lighter shade. -->
     <color name="car_list_divider_light">#1fffffff</color>
@@ -128,7 +135,7 @@
 
     <!-- The ripple colors. The "dark" and "light" designation here refers to the color of the
          ripple  itself. -->
-    <color name="car_card_ripple_background_dark">#17000000</color>
+    <color name="car_card_ripple_background_dark">#8F000000</color>
     <color name="car_card_ripple_background_light">#27ffffff</color>
 
     <!-- The ripple color for a light colored card. -->

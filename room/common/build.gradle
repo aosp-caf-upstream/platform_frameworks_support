@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import static android.support.dependencies.DependenciesKt.*
 import android.support.LibraryGroups
 import android.support.LibraryVersions
 import android.support.SupportLibraryExtension;
@@ -23,17 +24,15 @@ plugins {
 }
 
 dependencies {
-    compile libs.support.annotations
-    testCompile libs.junit
-    testCompile libs.mockito_core
+    compile(SUPPORT_ANNOTATIONS)
+    testCompile(JUNIT)
+    testCompile(MOCKITO_CORE)
 }
 
-createAndroidCheckstyle(project)
-
-version = LibraryVersions.ROOM.toString()
 supportLibrary {
     name = "Android Room-Common"
     publish = true
+    mavenVersion = LibraryVersions.ROOM
     mavenGroup = LibraryGroups.ROOM
     inceptionYear = "2017"
     description = "Android Room-Common"

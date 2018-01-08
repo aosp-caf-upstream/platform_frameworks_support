@@ -16,9 +16,10 @@
 
 package android.arch.paging.integration.testapp;
 
-import android.arch.paging.BoundedDataSource;
+import android.arch.paging.PositionalDataSource;
 import android.graphics.Color;
 import android.support.annotation.ColorInt;
+import android.support.annotation.NonNull;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,7 +27,7 @@ import java.util.List;
 /**
  * Sample data source with artificial data.
  */
-class ItemDataSource extends BoundedDataSource<Item> {
+class ItemDataSource extends PositionalDataSource<Item> {
     private static final int COUNT = 500;
 
     @ColorInt
@@ -39,18 +40,7 @@ class ItemDataSource extends BoundedDataSource<Item> {
     private static int sGenerationId;
     private final int mGenerationId = sGenerationId++;
 
-    @Override
-    public int countItems() {
-        return COUNT;
-    }
-
-    @Override
-    public List<Item> loadRange(int startPosition, int loadCount) {
-        if (isInvalid()) {
-            // abort!
-            return null;
-        }
-
+    private List<Item> loadRangeInternal(int startPosition, int loadCount) {
         List<Item> items = new ArrayList<>();
         int end = Math.min(COUNT, startPosition + loadCount);
         int bgColor = COLORS[mGenerationId % COLORS.length];
@@ -63,11 +53,22 @@ class ItemDataSource extends BoundedDataSource<Item> {
         for (int i = startPosition; i != end; i++) {
             items.add(new Item(i, "item " + i, bgColor));
         }
-
-        if (isInvalid()) {
-            // abort!
-            return null;
-        }
         return items;
+    }
+
+    @Override
+    public void loadInitial(@NonNull LoadInitialParams params,
+            @NonNull LoadInitialCallback<Item> callback) {
+        int position = computeInitialLoadPosition(params, COUNT);
+        int loadSize = computeInitialLoadSize(params, position, COUNT);
+        List<Item> data = loadRangeInternal(position, loadSize);
+        callback.onResult(data, position, COUNT);
+    }
+
+    @Override
+    public void loadRange(@NonNull LoadRangeParams params,
+            @NonNull LoadRangeCallback<Item> callback) {
+        List<Item> data = loadRangeInternal(params.startPosition, params.loadSize);
+        callback.onResult(data);
     }
 }

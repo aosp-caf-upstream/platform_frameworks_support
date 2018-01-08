@@ -20,8 +20,10 @@
 
     <uses-sdk tools:overrideLibrary="androidx.app.slice.view, androidx.app.slice.builders, androidx.app.slice.core" />
 
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
     <uses-permission android:name="android.permission.BIND_SLICE" />
 
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE"/>
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
@@ -38,11 +40,28 @@
 
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <intent-filter>
+                <action android:name="androidx.intent.SLICE_ACTION"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+            </intent-filter>
         </activity>
 
         <provider android:authorities="com.example.androidx.slice.demos"
                   android:name=".SampleSliceProvider"
-                  android:grantUriPermissions="true" />
+                  android:grantUriPermissions="true">
+            <intent-filter>
+                <action android:name="androidx.intent.SLICE_ACTION"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+            </intent-filter>
+        </provider>
+
+        <receiver
+            android:name=".SliceBroadcastReceiver"
+            android:exported="true" >
+            <intent-filter>
+                <action android:name="com.example.androidx.slice.action.*"/>
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

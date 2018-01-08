@@ -1,27 +1,25 @@
+import static android.support.dependencies.DependenciesKt.*
 import android.support.LibraryGroups
+import android.support.LibraryVersions
 
 plugins {
     id("SupportAndroidLibraryPlugin")
 }
 
 dependencies {
-    api project(':support-annotations')
-    api project(':support-compat')
+    api(project(":support-annotations"))
+    api(project(":support-compat"))
 
-    androidTestImplementation libs.test_runner, { exclude module: 'support-annotations' }
-}
-
-android {
-    defaultConfig {
-        minSdkVersion 21
-    }
+    androidTestImplementation(TEST_RUNNER)
+    androidTestImplementation(TEST_RULES)
 }
 
 supportLibrary {
     name = "Android Support TV Provider"
     publish = true
+    mavenVersion = LibraryVersions.SUPPORT_LIBRARY
     mavenGroup = LibraryGroups.SUPPORT
     inceptionYear = "2017"
     description = "Android Support Library for TV Provider"
-    legacySourceLocation = true
+    minSdkVersion = 21
 }

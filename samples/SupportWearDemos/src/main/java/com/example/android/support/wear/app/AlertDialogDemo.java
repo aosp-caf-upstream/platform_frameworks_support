@@ -17,6 +17,7 @@
 package com.example.android.support.wear.app;
 
 import android.app.Activity;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AlertDialog;
@@ -34,20 +35,40 @@ public class AlertDialogDemo extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.alert_dialog_demo);
 
-        AlertDialog dialog = createDialog();
+        AlertDialog v7Dialog = createV7Dialog();
+        android.app.AlertDialog frameworkDialog = createFrameworkDialog();
 
-        Button trigger = findViewById(R.id.dialog_button);
-        trigger.setOnClickListener(new View.OnClickListener() {
+        Button v7Trigger = findViewById(R.id.v7_dialog_button);
+        v7Trigger.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                dialog.show();
+                v7Dialog.show();
+            }
+        });
+
+        Button frameworkTrigger = findViewById(R.id.framework_dialog_button);
+        frameworkTrigger.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                frameworkDialog.show();
             }
         });
     }
 
-    private AlertDialog createDialog() {
+    private AlertDialog createV7Dialog() {
+        Drawable drawable = getDrawable(R.drawable.app_sample_code);
         return new AlertDialog.Builder(this)
                 .setTitle("AppCompatDialog")
+                .setMessage("Lorem ipsum dolor...")
+                .setPositiveButton("Ok", null)
+                .setPositiveButtonIcon(drawable)
+                .setNegativeButton("Cancel", null)
+                .create();
+    }
+
+    private android.app.AlertDialog createFrameworkDialog() {
+        return new android.app.AlertDialog.Builder(this)
+                .setTitle("FrameworkDialog")
                 .setMessage("Lorem ipsum dolor...")
                 .setPositiveButton("Ok", null)
                 .setNegativeButton("Cancel", null)

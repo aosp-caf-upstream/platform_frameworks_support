@@ -18,25 +18,22 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:minHeight="?android:attr/listPreferredItemHeightSmall"
+    android:minHeight="@dimen/abc_slice_row_min_height"
+    android:maxHeight="@dimen/abc_slice_row_max_height"
     android:gravity="center_vertical"
-    android:paddingStart="?android:attr/listPreferredItemPaddingStart"
-    android:paddingEnd="?android:attr/listPreferredItemPaddingEnd"
     android:background="?android:attr/activatedBackgroundIndicator"
     android:clipToPadding="false">
 
     <LinearLayout
-        android:id="@android:id/icon_frame"
+        android:id="@+id/icon_frame"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="-4dp"
         android:gravity="start|center_vertical"
         android:orientation="horizontal"
-        android:paddingEnd="12dp"
-        android:paddingTop="4dp"
-        android:paddingBottom="4dp"/>
+        android:paddingEnd="8dp"/>
 
     <LinearLayout
+        android:id="@android:id/content"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_weight="1"
@@ -46,22 +43,33 @@
         <TextView android:id="@android:id/title"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:maxLines="2"
-            android:textAppearance="?android:attr/textAppearanceListItem" />
+            android:textAppearance="?android:attr/textAppearanceListItem"
+            android:textColor="?android:attr/textColorPrimary"
+            android:maxLines="2"/>
 
         <TextView android:id="@android:id/summary"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_alignStart="@android:id/title"
-            android:textAppearance="?android:attr/textAppearanceListItemSecondary"
+            android:textAppearance="?attr/textAppearanceListItemSecondary"
             android:textColor="?android:attr/textColorSecondary"
             android:maxLines="10" />
 
     </LinearLayout>
 
+    <View
+        android:id="@+id/divider"
+        android:layout_width="1dp"
+        android:layout_height="match_parent"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="8dp"
+        android:background="?android:attr/listDivider"
+        android:visibility="gone"/>
+
     <LinearLayout android:id="@android:id/widget_frame"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:paddingStart="8dp"
         android:gravity="end|center_vertical"
         android:orientation="horizontal" />
 

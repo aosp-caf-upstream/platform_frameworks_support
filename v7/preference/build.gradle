@@ -14,28 +14,26 @@
  * limitations under the License
  */
 
+import static android.support.dependencies.DependenciesKt.*
 import android.support.LibraryGroups
+import android.support.LibraryVersions
 
 plugins {
     id("SupportAndroidLibraryPlugin")
 }
 
 dependencies {
-    api project(':support-v4')
-    api project(':appcompat-v7')
-    api project(':recyclerview-v7')
+    api(project(":support-v4"))
+    api(project(":appcompat-v7"))
+    api(project(":recyclerview-v7"))
 
-    androidTestImplementation libs.test_runner,      { exclude module: 'support-annotations' }
-    androidTestImplementation libs.espresso_core,    { exclude module: 'support-annotations' }
-    androidTestImplementation libs.mockito_core,     { exclude group: 'net.bytebuddy' } // DexMaker has it"s own MockMaker
-    androidTestImplementation libs.dexmaker_mockito, { exclude group: 'net.bytebuddy' } // DexMaker has it"s own MockMaker
+    androidTestImplementation(TEST_RUNNER)
+    androidTestImplementation(ESPRESSO_CORE)
+    androidTestImplementation(MOCKITO_CORE, libs.exclude_bytebuddy) // DexMaker has it"s own MockMaker
+    androidTestImplementation(DEXMAKER_MOCKITO, libs.exclude_bytebuddy) // DexMaker has it"s own MockMaker
 }
 
 android {
-    defaultConfig {
-        minSdkVersion 14
-    }
-
     sourceSets {
         main.res.srcDirs = [
                 'res',
@@ -56,6 +54,7 @@ android {
 supportLibrary {
     name = "Android Support Preference v7"
     publish = true
+    mavenVersion = LibraryVersions.SUPPORT_LIBRARY
     mavenGroup = LibraryGroups.SUPPORT
     inceptionYear = "2015"
     description = "Android Support Preference v7"

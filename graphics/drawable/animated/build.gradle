@@ -1,36 +1,38 @@
+import static android.support.dependencies.DependenciesKt.*
 import android.support.LibraryGroups
+import android.support.LibraryVersions
 
 plugins {
     id("SupportAndroidLibraryPlugin")
 }
 
 dependencies {
-    api project(':support-vector-drawable')
-    api project(':support-core-ui')
+    api(project(":support-vector-drawable"))
+    api(project(":support-core-ui"))
 
-    androidTestImplementation libs.test_runner,   { exclude module: 'support-annotations' }
-    androidTestImplementation libs.espresso_core, { exclude module: 'support-annotations' }
+    androidTestImplementation(TEST_RUNNER)
+    androidTestImplementation(ESPRESSO_CORE)
 }
 
 android {
     defaultConfig {
-        minSdkVersion 14
         // This disables the builds tools automatic vector -> PNG generation
         generatedDensities = []
     }
 
     aaptOptions {
-        additionalParameters "--no-version-vectors"
+        additionalParameters("--no-version-vectors")
     }
 
     buildTypes.all {
-        consumerProguardFiles 'proguard-rules.pro'
+        consumerProguardFiles("proguard-rules.pro")
     }
 }
 
 supportLibrary {
     name = "Android Support AnimatedVectorDrawable"
     publish = true
+    mavenVersion = LibraryVersions.SUPPORT_LIBRARY
     mavenGroup = LibraryGroups.SUPPORT
     inceptionYear = "2015"
     description = "Android Support AnimatedVectorDrawable"

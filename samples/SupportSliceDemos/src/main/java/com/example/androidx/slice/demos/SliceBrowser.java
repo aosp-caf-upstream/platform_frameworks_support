@@ -16,9 +16,14 @@
 
 package com.example.androidx.slice.demos;
 
-import android.app.Activity;
+import static com.example.androidx.slice.demos.SampleSliceProvider.URI_PATHS;
+import static com.example.androidx.slice.demos.SampleSliceProvider.getUri;
+
+import android.arch.lifecycle.LiveData;
 import android.content.ContentResolver;
+import android.content.Intent;
 import android.content.pm.ActivityInfo;
+import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
@@ -27,6 +32,8 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.provider.BaseColumns;
 import android.support.annotation.RequiresApi;
+import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.Toolbar;
 import android.util.ArrayMap;
 import android.util.Log;
 import android.view.Menu;
@@ -36,12 +43,13 @@ import android.view.ViewGroup;
 import android.widget.CursorAdapter;
 import android.widget.SearchView;
 import android.widget.SimpleCursorAdapter;
-import android.widget.Toolbar;
 
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
+import androidx.app.slice.Slice;
+import androidx.app.slice.widget.SliceLiveData;
 import androidx.app.slice.widget.SliceView;
 
 /**
@@ -49,11 +57,12 @@ import androidx.app.slice.widget.SliceView;
  * then displayed in the selected mode with SliceView.
  */
 @RequiresApi(api = 28)
-public class SliceBrowser extends Activity {
+public class SliceBrowser extends AppCompatActivity {
 
     private static final String TAG = "SlicePresenter";
 
     private static final String SLICE_METADATA_KEY = "android.metadata.SLICE_URI";
+    private static final boolean TEST_INTENT = false;
 
     private ArrayList<Uri> mSliceUris = new ArrayList<Uri>();
     private int mSelectedMode;
@@ -61,6 +70,7 @@ public class SliceBrowser extends Activity {
     private SearchView mSearchView;
     private SimpleCursorAdapter mAdapter;
     private SubMenu mTypeMenu;
+    private LiveData<Slice> mSliceLiveData;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -68,7 +78,7 @@ public class SliceBrowser extends Activity {
         setContentView(R.layout.activity_layout);
 
         Toolbar toolbar = findViewById(R.id.search_toolbar);
-        setActionBar(toolbar);
+        setSupportActionBar(toolbar);
 
         // Shows the slice
         mContainer = findViewById(R.id.slice_preview);
@@ -117,6 +127,9 @@ public class SliceBrowser extends Activity {
 
         // TODO: Listen for changes.
         updateAvailableSlices();
+        if (TEST_INTENT) {
+            addSlice(new Intent("androidx.intent.SLICE_ACTION").setPackage(getPackageName()));
+        }
     }
 
     @Override
@@ -127,6 +140,7 @@ public class SliceBrowser extends Activity {
         mTypeMenu.add("Shortcut");
         mTypeMenu.add("Small");
         mTypeMenu.add("Large");
+        menu.add("Auth");
         super.onCreateOptionsMenu(menu);
         return true;
     }
@@ -134,6 +148,9 @@ public class SliceBrowser extends Activity {
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getTitle().toString()) {
+            case "Auth":
+                authAllSlices();
+                return true;
             case "Shortcut":
                 mTypeMenu.setIcon(R.drawable.ic_shortcut);
                 mSelectedMode = SliceView.MODE_SHORTCUT;
@@ -155,8 +172,20 @@ public class SliceBrowser extends Activity {
 
     @Override
     protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
         outState.putInt("SELECTED_MODE", mSelectedMode);
         outState.putString("SELECTED_QUERY", mSearchView.getQuery().toString());
+    }
+
+    private void authAllSlices() {
+        List<ApplicationInfo> packages = getPackageManager().getInstalledApplications(0);
+        packages.forEach(info -> {
+            for (int i = 0; i < URI_PATHS.length; i++) {
+                grantUriPermission(info.packageName, getUri(URI_PATHS[i], getApplicationContext()),
+                        Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
+                                | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+            }
+        });
     }
 
     private void updateAvailableSlices() {
@@ -176,18 +205,37 @@ public class SliceBrowser extends Activity {
                 }
             }
         }
-        mSliceUris.add(SampleSliceProvider.MESSAGE);
+        for (int i = 0; i < URI_PATHS.length; i++) {
+            mSliceUris.add(getUri(URI_PATHS[i], getApplicationContext()));
+        }
         populateAdapter(String.valueOf(mSearchView.getQuery()));
+    }
+
+    private void addSlice(Intent intent) {
+        SliceView v = new SliceView(getApplicationContext());
+        v.setTag(intent);
+        if (mSliceLiveData != null) {
+            mSliceLiveData.removeObservers(this);
+        }
+        mContainer.removeAllViews();
+        mContainer.addView(v);
+        mSliceLiveData = SliceLiveData.fromIntent(this, intent);
+        v.setMode(mSelectedMode);
+        mSliceLiveData.observe(this, v);
     }
 
     private void addSlice(Uri uri) {
         if (ContentResolver.SCHEME_CONTENT.equals(uri.getScheme())) {
             SliceView v = new SliceView(getApplicationContext());
             v.setTag(uri);
+            if (mSliceLiveData != null) {
+                mSliceLiveData.removeObservers(this);
+            }
             mContainer.removeAllViews();
             mContainer.addView(v);
+            mSliceLiveData = SliceLiveData.fromUri(this, uri);
             v.setMode(mSelectedMode);
-            v.setSlice(uri);
+            mSliceLiveData.observe(this, v);
         } else {
             Log.w(TAG, "Invalid uri, skipping slice: " + uri);
         }
@@ -211,7 +259,12 @@ public class SliceBrowser extends Activity {
                 suggestions.add(uriString);
             }
         });
-        suggestions.sort(Comparator.comparingInt(ranking::get));
+        suggestions.sort(new Comparator<String>() {
+            @Override
+            public int compare(String o1, String o2) {
+                return Integer.compare(ranking.get(o1), ranking.get(o2));
+            }
+        });
         for (int i = 0; i < suggestions.size(); i++) {
             c.addRow(new Object[]{i, suggestions.get(i)});
         }

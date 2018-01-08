@@ -34,8 +34,8 @@ class ListAdapterHelperTest {
     private val mMainThread = TestExecutor()
     private val mBackgroundThread = TestExecutor()
 
-    private fun <T> createHelper(
-            listUpdateCallback: ListUpdateCallback, diffCallback: DiffCallback<T>): ListAdapterHelper<T> {
+    private fun <T> createHelper(listUpdateCallback: ListUpdateCallback,
+                                 diffCallback: DiffCallback<T>): ListAdapterHelper<T> {
         return ListAdapterHelper(listUpdateCallback,
                 ListAdapterConfig.Builder<T>()
                         .setDiffCallback(diffCallback)
@@ -114,7 +114,6 @@ class ListAdapterHelperTest {
         verifyNoMoreInteractions(callback)
         drain()
         verifyNoMoreInteractions(callback)
-
     }
 
     private fun drain() {

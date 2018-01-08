@@ -45,6 +45,15 @@ project(':paging:integration-tests:testapp').projectDir = new File(supportRoot, 
 include ':arch:core-testing'
 project(':arch:core-testing').projectDir = new File(supportRoot, "app-toolkit/core-testing")
 
+include ':lifecycle:livedata'
+project(':lifecycle:livedata').projectDir = new File(supportRoot, "lifecycle/livedata")
+
+include ':lifecycle:viewmodel'
+project(':lifecycle:viewmodel').projectDir = new File(supportRoot, "lifecycle/viewmodel")
+
+include ':lifecycle:extensions'
+project(':lifecycle:extensions').projectDir = new File(supportRoot, "lifecycle/extensions")
+
 include ':lifecycle:extensions'
 project(':lifecycle:extensions').projectDir = new File(supportRoot, "lifecycle/extensions")
 
@@ -98,24 +107,13 @@ project(':room:integration-tests:kotlintestapp').projectDir = new File(supportRo
 
 /////////////////////////////
 //
-// SupportLib
-//
-/////////////////////////////
-if (inAppToolkitProject && System.getenv("USE_SUPPORT_LIB_SOURCE")) {
-    apply from: "${supportRoot.absolutePath}/app-toolkit/settings_support_lib.gradle"
-}
-
-/////////////////////////////
-//
 // External
 //
 /////////////////////////////
 if (inAppToolkitProject) {
     File externalRoot = new File(supportRoot, '../../external')
 
-    include ':doclava'
-    project(':doclava').projectDir = new File(externalRoot, 'doclava')
+    includeBuild new File(externalRoot, 'doclava')
 
-    include ':jdiff'
-    project(':jdiff').projectDir = new File(externalRoot, 'jdiff')
+    includeBuild new File(externalRoot, 'jdiff')
 }

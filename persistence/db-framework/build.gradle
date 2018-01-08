@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import static android.support.dependencies.DependenciesKt.*
 import android.support.LibraryGroups
 import android.support.LibraryVersions
 import android.support.SupportLibraryExtension
@@ -22,36 +23,15 @@ plugins {
     id("SupportAndroidLibraryPlugin")
 }
 
-android {
-    defaultConfig {
-        minSdkVersion flatfoot.min_sdk
-    }
-
-    testOptions {
-        unitTests.returnDefaultValues = true
-    }
-}
-
 dependencies {
-    compile libs.support.annotations
-    compile project(":persistence:db")
-}
-createAndroidCheckstyle(project)
-
-android.libraryVariants.all { variant ->
-    def name = variant.buildType.name
-    def suffix = name.capitalize()
-    def jarTask = project.tasks.create(name: "jar${suffix}", type: Jar){
-        dependsOn variant.javaCompile
-        from variant.javaCompile.destinationDir
-        destinationDir new File(project.buildDir, "libJar")
-    }
+    api(SUPPORT_ANNOTATIONS)
+    api(project(":persistence:db"))
 }
 
-version = LibraryVersions.ROOM.toString()
 supportLibrary {
     name = "Android Support SQLite - Framework Implementation"
     publish = true
+    mavenVersion = LibraryVersions.ROOM
     mavenGroup = LibraryGroups.PERSISTENCE
     inceptionYear = "2017"
     description = "The implementation of Support SQLite library using the framework code."

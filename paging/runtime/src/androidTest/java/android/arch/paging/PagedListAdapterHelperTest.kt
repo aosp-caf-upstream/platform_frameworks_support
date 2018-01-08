@@ -41,9 +41,8 @@ class PagedListAdapterHelperTest {
     private val mDiffThread = TestExecutor()
     private val mPageLoadingThread = TestExecutor()
 
-
-    private fun <T> createHelper(
-            listUpdateCallback: ListUpdateCallback, diffCallback: DiffCallback<T>): PagedListAdapterHelper<T> {
+    private fun <T> createHelper(listUpdateCallback: ListUpdateCallback,
+                                 diffCallback: DiffCallback<T>): PagedListAdapterHelper<T> {
         return PagedListAdapterHelper(listUpdateCallback,
                 ListAdapterConfig.Builder<T>()
                         .setDiffCallback(diffCallback)
@@ -54,12 +53,10 @@ class PagedListAdapterHelperTest {
 
     private fun <V> createPagedListFromListAndPos(
             config: PagedList.Config, data: List<V>, initialKey: Int): PagedList<V> {
-        return PagedList.Builder<Int, V>()
+        return PagedList.Builder<Int, V>(ListDataSource(data), config)
                 .setInitialKey(initialKey)
-                .setConfig(config)
                 .setMainThreadExecutor(mMainThread)
                 .setBackgroundThreadExecutor(mPageLoadingThread)
-                .setDataSource(ListDataSource(data))
                 .build()
     }
 

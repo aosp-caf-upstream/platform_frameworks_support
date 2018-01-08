@@ -22,12 +22,13 @@ import android.support.annotation.AnyThread;
 import android.support.annotation.IntRange;
 import android.support.annotation.RequiresApi;
 import android.support.annotation.RestrictTo;
-import android.support.text.emoji.flatbuffer.MetadataList;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+
+import androidx.text.emoji.flatbuffer.MetadataList;
 
 /**
  * Reads the emoji metadata from a given InputStream or ByteBuffer.
@@ -275,7 +276,7 @@ class MetadataListReader {
         @Override
         public void skip(int numOfBytes) throws IOException {
             while (numOfBytes > 0) {
-                long skipped = mInputStream.skip(numOfBytes);
+                int skipped = (int) mInputStream.skip(numOfBytes);
                 if (skipped < 1) {
                     throw new IOException("Skip didn't move at least 1 byte forward");
                 }

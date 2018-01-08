@@ -1,26 +1,22 @@
+import static android.support.dependencies.DependenciesKt.*
 import android.support.LibraryGroups
+import android.support.LibraryVersions
 
 plugins {
     id("SupportAndroidLibraryPlugin")
 }
 
 dependencies {
-    api project(':support-annotations')
+    api(project(":support-annotations"))
 
-    androidTestImplementation libs.test_runner,   { exclude module: 'support-annotations' }
-}
-
-android {
-    defaultConfig {
-        minSdkVersion 14
-    }
+    androidTestImplementation(TEST_RUNNER)
 }
 
 supportLibrary {
     name = "Android Support ExifInterface"
     publish = true
+    mavenVersion = LibraryVersions.SUPPORT_LIBRARY
     mavenGroup = LibraryGroups.SUPPORT
     inceptionYear = "2016"
     description = "Android Support ExifInterface"
-    legacySourceLocation = true
 }

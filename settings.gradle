@@ -40,6 +40,9 @@ project(':palette-v7').projectDir = new File(rootDir, 'v7/palette')
 include ':recyclerview-v7'
 project(':recyclerview-v7').projectDir = new File(rootDir, 'v7/recyclerview')
 
+include ':recyclerview-selection'
+project(':recyclerview-selection').projectDir = new File(rootDir, 'recyclerview-selection')
+
 include ':cardview-v7'
 project(':cardview-v7').projectDir = new File(rootDir, 'v7/cardview')
 
@@ -50,13 +53,13 @@ include ':preference-v14'
 project(':preference-v14').projectDir = new File(rootDir, 'v14/preference')
 
 include ':preference-leanback-v17'
-project(':preference-leanback-v17').projectDir = new File(rootDir, 'v17/preference-leanback')
+project(':preference-leanback-v17').projectDir = new File(rootDir, 'preference-leanback')
 
 include ':support-v13'
 project(':support-v13').projectDir = new File(rootDir, 'v13')
 
 include ':leanback-v17'
-project(':leanback-v17').projectDir = new File(rootDir, 'v17/leanback')
+project(':leanback-v17').projectDir = new File(rootDir, 'leanback')
 
 include ':design'
 project(':design').projectDir = new File(rootDir, 'design')
@@ -81,6 +84,9 @@ project(':transition').projectDir = new File(rootDir, 'transition')
 
 include ':support-dynamic-animation'
 project(':support-dynamic-animation').projectDir = new File(rootDir, 'dynamic-animation')
+
+include ':viewpager2'
+project(':viewpager2').projectDir = new File(rootDir, 'viewpager2')
 
 include ':exifinterface'
 project(':exifinterface').projectDir = new File(rootDir, 'exifinterface')
@@ -117,6 +123,9 @@ project(':slices-view').projectDir = new File(rootDir, 'slices/view')
 
 include ':slices-builders'
 project(':slices-builders').projectDir = new File(rootDir, 'slices/builders')
+
+include ':webkit-codegen'
+project(':webkit-codegen').projectDir = new File(rootDir, 'webkit-codegen')
 
 /////////////////////////////
 //
@@ -162,6 +171,9 @@ project(':support-vector-drawable-demos').projectDir = new File(samplesRoot, 'Su
 include ':support-animation-demos'
 project(':support-animation-demos').projectDir = new File(samplesRoot, 'SupportAnimationDemos')
 
+include ':viewpager2-demos'
+project(':viewpager2-demos').projectDir = new File(samplesRoot, 'ViewPager2Demos')
+
 include ':support-wear-demos'
 project(':support-wear-demos').projectDir = new File(samplesRoot, 'SupportWearDemos')
 
@@ -170,6 +182,9 @@ project(':support-app-navigation').projectDir = new File(samplesRoot, 'SupportAp
 
 include ':support-emoji-demos'
 project(':support-emoji-demos').projectDir = new File(samplesRoot, 'SupportEmojiDemos')
+
+include ':support-car-demos'
+project(':support-car-demos').projectDir = new File(samplesRoot, 'SupportCarDemos')
 
 include ':support-slices-demos'
 project(':support-slices-demos').projectDir = new File(samplesRoot, 'SupportSliceDemos')
@@ -190,13 +205,19 @@ project(':support-testutils').projectDir = new File(rootDir, 'testutils')
 /////////////////////////////
 
 include ':support-media-compat-test-client'
-project(':support-media-compat-test-client').projectDir = new File(rootDir, 'media-compat/cross-app-tests/client')
+project(':support-media-compat-test-client').projectDir = new File(rootDir, 'media-compat/version-compat-tests/current/client')
+
+include ':support-media-compat-test-client-previous'
+project(':support-media-compat-test-client-previous').projectDir = new File(rootDir, 'media-compat/version-compat-tests/previous/client')
 
 include ':support-media-compat-test-service'
-project(':support-media-compat-test-service').projectDir = new File(rootDir, 'media-compat/cross-app-tests/service')
+project(':support-media-compat-test-service').projectDir = new File(rootDir, 'media-compat/version-compat-tests/current/service')
+
+include ':support-media-compat-test-service-previous'
+project(':support-media-compat-test-service-previous').projectDir = new File(rootDir, 'media-compat/version-compat-tests/previous/service')
 
 include ':support-media-compat-test-lib'
-project(':support-media-compat-test-lib').projectDir = new File(rootDir, 'media-compat/cross-app-tests/lib')
+project(':support-media-compat-test-lib').projectDir = new File(rootDir, 'media-compat/version-compat-tests/lib')
 
 /////////////////////////////
 //
@@ -206,11 +227,9 @@ project(':support-media-compat-test-lib').projectDir = new File(rootDir, 'media-
 
 File externalRoot = new File(rootDir, '../../external')
 
-include ':doclava'
-project(':doclava').projectDir = new File(externalRoot, 'doclava')
+includeBuild new File(externalRoot, 'doclava')
 
-include ':jdiff'
-project(':jdiff').projectDir = new File(externalRoot, 'jdiff')
+includeBuild new File(externalRoot, 'jdiff')
 
 include ':noto-emoji-compat'
 project(':noto-emoji-compat').projectDir = new File(externalRoot, 'noto-fonts/emoji-compat')

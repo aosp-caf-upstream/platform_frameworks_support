@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import static android.support.dependencies.DependenciesKt.*
 import android.support.LibraryGroups
 import android.support.LibraryVersions
 import android.support.SupportLibraryExtension
@@ -22,21 +23,11 @@ plugins {
     id("SupportAndroidLibraryPlugin")
 }
 
-android {
-    defaultConfig {
-        minSdkVersion flatfoot.min_sdk
-    }
-
-    testOptions {
-        unitTests.returnDefaultValues = true
-    }
-}
-
 dependencies {
-    compile libs.support.annotations
+    api(SUPPORT_ANNOTATIONS)
 }
-createAndroidCheckstyle(project)
 
+// Used by testCompile in room-compiler
 android.libraryVariants.all { variant ->
     def name = variant.buildType.name
     def suffix = name.capitalize()
@@ -47,10 +38,10 @@ android.libraryVariants.all { variant ->
     }
 }
 
-version = LibraryVersions.ROOM.toString()
 supportLibrary {
     name = "Android DB"
     publish = true
+    mavenVersion = LibraryVersions.ROOM
     mavenGroup = LibraryGroups.PERSISTENCE
     inceptionYear = "2017"
     description = "Android DB"

@@ -17,8 +17,8 @@
 package android.support.v7.widget;
 
 import android.content.Context;
+import android.graphics.Canvas;
 import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
 import android.support.v4.view.NestedScrollingParent2;
 import android.support.v4.view.ViewCompat;
 import android.util.AttributeSet;
@@ -26,9 +26,13 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
 
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+
 public class TestedFrameLayout extends FrameLayout implements NestedScrollingParent2 {
 
     private NestedScrollingParent2 mNestedScrollingDelegate;
+    private CountDownLatch mDrawLatch;
 
     public TestedFrameLayout(Context context) {
         super(context);
@@ -85,6 +89,22 @@ public class TestedFrameLayout extends FrameLayout implements NestedScrollingPar
                             recyclerView.getHeight() + getPaddingTop() + getPaddingBottom(),
                             getMinimumHeight()));
         }
+    }
+
+    @Override
+    public void onDraw(Canvas c) {
+        super.onDraw(c);
+        if (mDrawLatch != null) {
+            mDrawLatch.countDown();
+        }
+    }
+
+    public void expectDraws(int count) {
+        mDrawLatch = new CountDownLatch(count);
+    }
+
+    public void waitForDraw(int seconds) throws InterruptedException {
+        mDrawLatch.await(seconds, TimeUnit.SECONDS);
     }
 
     public static int chooseSize(int spec, int desired, int min) {
@@ -201,7 +221,7 @@ public class TestedFrameLayout extends FrameLayout implements NestedScrollingPar
     }
 
     @Override
-    public void onNestedPreScroll(@NonNull View target, int dx, int dy, @Nullable int[] consumed,
+    public void onNestedPreScroll(@NonNull View target, int dx, int dy, @NonNull int[] consumed,
             @ViewCompat.NestedScrollType int type) {
         if (mNestedScrollingDelegate != null) {
             mNestedScrollingDelegate.onNestedPreScroll(target, dx, dy, consumed, type);

@@ -16,6 +16,7 @@
 
 package androidx.app.slice.widget;
 
+import android.annotation.TargetApi;
 import android.content.Context;
 import android.content.res.ColorStateList;
 import android.content.res.TypedArray;
@@ -27,16 +28,20 @@ import android.graphics.Paint;
 import android.graphics.PorterDuff.Mode;
 import android.graphics.PorterDuffXfermode;
 import android.graphics.Rect;
+import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.Icon;
 import android.support.annotation.AttrRes;
 import android.support.annotation.ColorInt;
 import android.support.annotation.NonNull;
 import android.support.annotation.RestrictTo;
+import android.text.format.DateUtils;
 import android.view.Gravity;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
+
+import java.util.Calendar;
 
 /**
  * A bunch of utilities for slice UI.
@@ -44,6 +49,7 @@ import android.widget.ImageView;
  * @hide
  */
 @RestrictTo(RestrictTo.Scope.LIBRARY)
+@TargetApi(23)
 public class SliceViewUtil {
 
     /**
@@ -98,7 +104,7 @@ public class SliceViewUtil {
                 Color.blue(inputColor));
     }
 
-    /**:%s
+    /**
      */
     @ColorInt
     public static int getColorAttr(@NonNull Context context, @AttrRes int attr) {
@@ -134,6 +140,21 @@ public class SliceViewUtil {
 
     /**
      */
+    public static Icon createIconFromDrawable(Drawable d) {
+        if (d instanceof BitmapDrawable) {
+            return Icon.createWithBitmap(((BitmapDrawable) d).getBitmap());
+        }
+        Bitmap b = Bitmap.createBitmap(d.getIntrinsicWidth(), d.getIntrinsicHeight(),
+                Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(b);
+        d.setBounds(0, 0, canvas.getWidth(), canvas.getHeight());
+        d.draw(canvas);
+        return Icon.createWithBitmap(b);
+    }
+
+    /**
+     */
+    @TargetApi(28)
     public static void createCircledIcon(@NonNull Context context, int color, int iconSizePx,
             Icon icon, boolean isLarge, ViewGroup parent) {
         ImageView v = new ImageView(context);
@@ -170,5 +191,12 @@ public class SliceViewUtil {
         paint.setXfermode(new PorterDuffXfermode(Mode.SRC_IN));
         canvas.drawBitmap(bitmap, rect, rect, paint);
         return output;
+    }
+
+    /**
+     */
+    public static CharSequence getRelativeTimeString(long time) {
+        return DateUtils.getRelativeTimeSpanString(time, Calendar.getInstance().getTimeInMillis(),
+                DateUtils.MINUTE_IN_MILLIS, DateUtils.FORMAT_ABBREV_RELATIVE);
     }
 }

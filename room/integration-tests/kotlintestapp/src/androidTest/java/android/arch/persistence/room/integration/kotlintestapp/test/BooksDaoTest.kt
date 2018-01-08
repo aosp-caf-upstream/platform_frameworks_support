@@ -19,6 +19,7 @@ package android.arch.persistence.room.integration.kotlintestapp.test
 import android.arch.persistence.room.integration.kotlintestapp.vo.Author
 import android.arch.persistence.room.integration.kotlintestapp.vo.Book
 import android.arch.persistence.room.integration.kotlintestapp.vo.BookWithPublisher
+import android.arch.persistence.room.integration.kotlintestapp.vo.Lang
 import android.arch.persistence.room.integration.kotlintestapp.vo.Publisher
 import android.database.sqlite.SQLiteConstraintException
 import android.support.test.filters.SmallTest
@@ -29,7 +30,6 @@ import org.hamcrest.MatcherAssert.assertThat
 import org.junit.Assert.assertNotNull
 import org.junit.Test
 import java.util.Date
-import kotlin.collections.ArrayList
 
 @SmallTest
 class BooksDaoTest : TestDatabaseTest() {
@@ -80,13 +80,26 @@ class BooksDaoTest : TestDatabaseTest() {
         booksDao.addPublishers(TestUtil.PUBLISHER)
         booksDao.addBooks(TestUtil.BOOK_1, TestUtil.BOOK_2)
 
-        var actualPublisherWithBooks = booksDao.getPublisherWithBooks(
+        val actualPublisherWithBooks = booksDao.getPublisherWithBooks(
                 TestUtil.PUBLISHER.publisherId)
 
         assertThat(actualPublisherWithBooks.publisher, `is`<Publisher>(TestUtil.PUBLISHER))
         assertThat(actualPublisherWithBooks.books?.size, `is`(2))
         assertThat(actualPublisherWithBooks.books?.get(0), `is`<Book>(TestUtil.BOOK_1))
         assertThat(actualPublisherWithBooks.books?.get(1), `is`<Book>(TestUtil.BOOK_2))
+    }
+
+    @Test // b/68077506
+    fun publisherWithBookSales() {
+        booksDao.addAuthors(TestUtil.AUTHOR_1)
+        booksDao.addPublishers(TestUtil.PUBLISHER)
+        booksDao.addBooks(TestUtil.BOOK_1, TestUtil.BOOK_2)
+        val actualPublisherWithBooks = booksDao.getPublisherWithBookSales(
+                TestUtil.PUBLISHER.publisherId)
+
+        assertThat(actualPublisherWithBooks.publisher, `is`<Publisher>(TestUtil.PUBLISHER))
+        assertThat(actualPublisherWithBooks.sales, `is`(listOf(TestUtil.BOOK_1.salesCnt,
+                TestUtil.BOOK_2.salesCnt)))
     }
 
     @Test
@@ -118,5 +131,26 @@ class BooksDaoTest : TestDatabaseTest() {
                 TestUtil.BOOK_1.bookId,
                 TestUtil.BOOK_2.bookId))
         assertThat(books, `is`(listOf(TestUtil.BOOK_2, TestUtil.BOOK_1)))
+    }
+
+    @Test
+    fun findBooksByLanguage() {
+        booksDao.addPublishers(TestUtil.PUBLISHER)
+        val book1 = TestUtil.BOOK_1.copy(languages = setOf(Lang.TR))
+        val book2 = TestUtil.BOOK_2.copy(languages = setOf(Lang.ES, Lang.TR))
+        val book3 = TestUtil.BOOK_3.copy(languages = setOf(Lang.EN))
+        booksDao.addBooks(book1, book2, book3)
+
+        assertThat(booksDao.findByLanguages(setOf(Lang.EN, Lang.TR)),
+                `is`(listOf(book1, book2, book3)))
+
+        assertThat(booksDao.findByLanguages(setOf(Lang.TR)),
+                `is`(listOf(book1, book2)))
+
+        assertThat(booksDao.findByLanguages(setOf(Lang.ES)),
+                `is`(listOf(book2)))
+
+        assertThat(booksDao.findByLanguages(setOf(Lang.EN)),
+                `is`(listOf(book3)))
     }
 }

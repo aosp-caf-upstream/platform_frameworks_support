@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import static android.support.dependencies.DependenciesKt.*
 import android.support.LibraryGroups
 import android.support.LibraryVersions
 import android.support.SupportLibraryExtension
@@ -22,43 +23,21 @@ plugins {
     id("SupportAndroidLibraryPlugin")
 }
 
-android {
-    defaultConfig {
-        minSdkVersion flatfoot.min_sdk
-    }
-
-    testOptions {
-        unitTests.returnDefaultValues = true
-    }
-}
-
 dependencies {
-    compile project(":room:common")
-    compile project(":room:runtime")
-    compile project(":persistence:db")
-    compile project(":persistence:db-framework")
-    compile project(":room:migration")
-    compile project(":arch:runtime")
-    compile libs.support.core_utils, libs.support_exclude_config
-    compile libs.junit
+    api(project(":room:common"))
+    api(project(":room:runtime"))
+    api(project(":persistence:db"))
+    api(project(":persistence:db-framework"))
+    api(project(":room:migration"))
+    api(project(":arch:runtime"))
+    api(SUPPORT_CORE_UTILS, libs.support_exclude_config)
+    api(JUNIT)
 }
 
-createAndroidCheckstyle(project)
-
-android.libraryVariants.all { variant ->
-    def name = variant.buildType.name
-    def suffix = name.capitalize()
-    project.tasks.create(name: "jar${suffix}", type: Jar){
-        dependsOn variant.javaCompile
-        from variant.javaCompile.destinationDir
-        destinationDir new File(project.buildDir, "libJar")
-    }
-}
-
-version = LibraryVersions.ROOM.toString()
 supportLibrary {
     name = "Android Room Testing"
     publish = true
+    mavenVersion = LibraryVersions.ROOM
     mavenGroup = LibraryGroups.ROOM
     inceptionYear = "2017"
     description = "Android Room Testing"
