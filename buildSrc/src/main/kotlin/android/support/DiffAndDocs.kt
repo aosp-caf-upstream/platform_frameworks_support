@@ -30,7 +30,6 @@ import org.gradle.api.Task
 import org.gradle.api.artifacts.Configuration
 import org.gradle.api.file.FileCollection
 import org.gradle.api.plugins.JavaBasePlugin
-import org.gradle.api.tasks.Copy
 import org.gradle.api.tasks.TaskContainer
 import org.gradle.api.tasks.bundling.Zip
 import org.gradle.api.tasks.compile.JavaCompile
@@ -106,7 +105,7 @@ private fun getLastReleasedApiFile(rootFolder: File, refVersion: Version): File?
     var lastFile: File? = null
     var lastVersion: Version? = null
     apiDir.listFiles().forEach { file ->
-        Version.from(file)?.let { version ->
+        Version.parseOrNull(file)?.let { version ->
             if ((lastFile == null || lastVersion!! < version) && version < refVersion) {
                 lastFile = file
                 lastVersion = version
@@ -129,7 +128,7 @@ private fun getApiFile(rootDir: File, refVersion: Version): File {
 private fun getApiFile(rootDir: File, refVersion: Version, forceRelease: Boolean = false): File {
     val apiDir = File(rootDir, "api")
 
-    if (!refVersion.isSnapshot || forceRelease) {
+    if (refVersion.isFinalApi() || forceRelease) {
         // Release API file is always X.Y.0.txt.
         return File(apiDir, "${refVersion.major}.${refVersion.minor}.0.txt")
     }
@@ -147,13 +146,13 @@ private fun createVerifyUpdateApiAllowedTask(project: Project) =
                 val rootFolder = project.projectDir
                 val version = Version(project.version as String)
 
-                if (version.isPatch) {
+                if (version.isPatch()) {
                     throw GradleException("Public APIs may not be modified in patch releases.")
-                } else if (version.isSnapshot && getApiFile(rootFolder,
+                } else if (!version.isFinalApi() && getApiFile(rootFolder,
                         version,
                         true).exists()) {
                     throw GradleException("Inconsistent version. Public API file already exists.")
-                } else if (!version.isSnapshot && getApiFile(rootFolder, version).exists()
+                } else if (version.isFinalApi() && getApiFile(rootFolder, version).exists()
                         && !project.hasProperty("force")) {
                     throw GradleException("Public APIs may not be modified in finalized releases.")
                 }
@@ -166,7 +165,7 @@ private fun createGenerateApiTask(project: Project, docletpathParam: Collection<
             setDocletpath(docletpathParam)
             destinationDir = project.docsDir()
             // Base classpath is Android SDK, sub-projects add their own.
-            classpath = project.androidJar()
+            classpath = androidJarFile(project)
             apiFile = File(project.docsDir(), "release/${project.name}/current.txt")
             generateDocs = false
 
@@ -247,7 +246,7 @@ private fun createUpdateApiTask(project: Project, checkApiRelease: CheckApiTask)
  */
 private fun createOldApiXml(project: Project, doclavaConfig: Configuration) =
         project.tasks.createWithConfig("oldApiXml", ApiXmlConversionTask::class.java) {
-            val toApi = project.processProperty("toApi")?.let(Version::from)
+            val toApi = project.processProperty("toApi")?.let { Version.parseOrNull(it) }
             val fromApi = project.processProperty("fromApi")
             classpath = project.files(doclavaConfig.resolve())
             val rootFolder = project.projectDir
@@ -329,7 +328,7 @@ private fun createGenerateDiffsTask(
         jdiffConfig: Configuration) =
         project.tasks.createWithConfig("generateDiffs", JDiffTask::class.java) {
             // Base classpath is Android SDK, sub-projects add their own.
-            classpath = project.androidJar()
+            classpath = androidJarFile(project)
 
             // JDiff properties.
             oldApiXmlFile = oldApiTask.outputApiXmlFile
@@ -358,7 +357,7 @@ private fun createDistDocsTask(project: Project, generateDocs: DoclavaTask) =
             from(generateDocs.destinationDir)
             baseName = "android-support-docs"
             version = project.buildNumber()
-
+            destinationDir = project.distDir()
             doLast {
                 logger.lifecycle("'Wrote API reference to $archivePath")
             }
@@ -366,33 +365,18 @@ private fun createDistDocsTask(project: Project, generateDocs: DoclavaTask) =
 
 // Set up platform API files for federation.
 private fun createGenerateSdkApiTask(project: Project, doclavaConfig: Configuration): Task =
-        if (project.androidApiTxt() != null) {
-            project.tasks.createWithConfig("generateSdkApi", Copy::class.java) {
-                description = "Copies the API files for the current SDK."
-                // Export the API files so this looks like a DoclavaTask.
-                from(project.androidApiTxt()!!.absolutePath)
-                val apiFile = sdkApiFile(project)
-                into(apiFile.parent)
-                rename { apiFile.name }
-                // Register the fake removed file as an output.
-                val removedApiFile = removedSdkApiFile(project)
-                outputs.file(removedApiFile)
-                doLast { removedApiFile.createNewFile() }
-            }
-        } else {
-            project.tasks.createWithConfig("generateSdkApi", DoclavaTask::class.java) {
-                dependsOn(doclavaConfig)
-                description = "Generates API files for the current SDK."
-                setDocletpath(doclavaConfig.resolve())
-                destinationDir = project.docsDir()
-                classpath = project.androidJar()
-                source(project.zipTree(project.androidSrcJar()))
-                apiFile = sdkApiFile(project)
-                removedApiFile = removedSdkApiFile(project)
-                generateDocs = false
-                coreJavadocOptions {
-                    addStringOption("stubpackages", "android.*")
-                }
+        project.tasks.createWithConfig("generateSdkApi", DoclavaTask::class.java) {
+            dependsOn(doclavaConfig)
+            description = "Generates API files for the current SDK."
+            setDocletpath(doclavaConfig.resolve())
+            destinationDir = project.docsDir()
+            classpath = androidJarFile(project)
+            source(project.zipTree(androidSrcJarFile(project)))
+            apiFile = sdkApiFile(project)
+            removedApiFile = removedSdkApiFile(project)
+            generateDocs = false
+            coreJavadocOptions {
+                addStringOption("stubpackages", "android.*")
             }
         }
 
@@ -411,7 +395,7 @@ private fun createGenerateDocsTask(
             setDocletpath(doclavaConfig.resolve())
             val offline = project.processProperty("offlineDocs") != null
             destinationDir = File(project.docsDir(), if (offline) "offline" else "online")
-            classpath = project.androidJar()
+            classpath = androidJarFile(project)
             val hidden = listOf<Int>(105, 106, 107, 111, 112, 113, 115, 116, 121)
             doclavaErrors = ((101..122) - hidden).toSet()
             doclavaWarnings = emptySet()
@@ -490,7 +474,7 @@ private fun initializeApiChecksForProject(project: Project, generateDocs: Genera
     }
 
     // Check whether the development API surface has changed.
-    val verifyConfig = if (version.isPatch) CHECK_API_CONFIG_PATCH else CHECK_API_CONFIG_DEVELOP
+    val verifyConfig = if (version.isPatch()) CHECK_API_CONFIG_PATCH else CHECK_API_CONFIG_DEVELOP
     val currentApiFile = getApiFile(workingDir, version)
     val checkApi = createCheckApiTask(project,
             "checkApi",
@@ -602,18 +586,23 @@ private fun <T : Task> TaskContainer.createWithConfig(
         config: T.() -> Unit) =
         create(name, taskClass) { task -> task.config() }
 
+private fun androidJarFile(project: Project): FileCollection =
+        project.files(arrayOf(File(project.fullSdkPath(),
+                "platforms/android-${SupportConfig.CURRENT_SDK_VERSION}/android.jar")))
+
+private fun androidSrcJarFile(project: Project): File = File(project.fullSdkPath(),
+        "platforms/android-${SupportConfig.CURRENT_SDK_VERSION}/android-stubs-src.jar")
+
 // Nasty part. Get rid of that eventually!
 private fun Project.docsDir(): File = properties["docsDir"] as File
 
-private fun Project.androidJar() = rootProject.properties["androidJar"] as FileCollection
-
-private fun Project.androidSrcJar() = rootProject.properties["androidSrcJar"] as File
+private fun Project.fullSdkPath(): File = rootProject.properties["fullSdkPath"] as File
 
 private fun Project.version() = Version(project.version as String)
 
 private fun Project.buildNumber() = properties["buildNumber"] as String
 
-private fun Project.androidApiTxt() = properties["androidApiTxt"] as? File
+private fun Project.distDir(): File = rootProject.properties["distDir"] as File
 
 private fun Project.processProperty(name: String) =
         if (hasProperty(name)) {

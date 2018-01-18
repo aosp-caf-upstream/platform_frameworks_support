@@ -19,6 +19,7 @@ package android.support
 import android.support.SupportConfig.INSTRUMENTATION_RUNNER
 import com.android.build.gradle.LibraryExtension
 import com.android.build.gradle.internal.dsl.LintOptions
+import com.android.build.gradle.tasks.GenerateBuildConfig
 import net.ltgt.gradle.errorprone.ErrorProneBasePlugin
 import net.ltgt.gradle.errorprone.ErrorProneToolChain
 import org.gradle.api.JavaVersion
@@ -72,12 +73,21 @@ class SupportAndroidLibraryPlugin : Plugin<Project> {
 
             library.compileOptions.setSourceCompatibility(javaVersion)
             library.compileOptions.setTargetCompatibility(javaVersion)
-        }
 
-        VersionFileWriterTask.setUpAndroidLibrary(project)
+            VersionFileWriterTask.setUpAndroidLibrary(project, library)
+        }
 
         project.apply(mapOf("plugin" to "com.android.library"))
         project.apply(mapOf("plugin" to ErrorProneBasePlugin::class.java))
+
+        project.afterEvaluate {
+            project.tasks.all({
+                if (it is GenerateBuildConfig) {
+                    // Disable generating BuildConfig.java
+                    it.enabled = false
+                }
+            })
+        }
 
         project.configurations.all { configuration ->
             if (isCoreSupportLibrary && project.name != "support-annotations") {
@@ -102,16 +112,13 @@ class SupportAndroidLibraryPlugin : Plugin<Project> {
         val library = project.extensions.findByType(LibraryExtension::class.java)
                 ?: throw Exception("Failed to find Android extension")
 
-        val currentSdk = project.property("currentSdk")
-        when (currentSdk) {
-            is Int -> library.compileSdkVersion(currentSdk)
-            is String -> library.compileSdkVersion(currentSdk)
-        }
+        library.compileSdkVersion(SupportConfig.CURRENT_SDK_VERSION)
 
-        library.buildToolsVersion = SupportConfig.getBuildTools(project)
+        library.buildToolsVersion = SupportConfig.BUILD_TOOLS_VERSION
 
         // Update the version meta-data in each Manifest.
-        library.defaultConfig.addManifestPlaceholders(mapOf("target-sdk-version" to currentSdk))
+        library.defaultConfig.addManifestPlaceholders(
+                mapOf("target-sdk-version" to SupportConfig.CURRENT_SDK_VERSION))
 
         // Set test runner.
         library.defaultConfig.testInstrumentationRunner = INSTRUMENTATION_RUNNER
@@ -122,12 +129,12 @@ class SupportAndroidLibraryPlugin : Plugin<Project> {
         library.signingConfigs.findByName("debug")?.storeFile =
                 SupportConfig.getKeystore(project)
 
-        setUpLint(library.lintOptions, SupportConfig.getLintBaseline(project))
-
-        if (SupportConfig.isUsingFullSdk(project)) {
-            // Library projects don't run lint by default, so set up dependency.
-            project.tasks.getByName("uploadArchives").dependsOn("lintRelease")
+        project.afterEvaluate {
+            setUpLint(library.lintOptions, SupportConfig.getLintBaseline(project),
+                    (supportLibraryExtension.mavenVersion?.isSnapshot()) ?: true)
         }
+
+        project.tasks.getByName("uploadArchives").dependsOn("lintRelease")
 
         SourceJarTaskHelper.setUpAndroidProject(project, library)
 
@@ -160,7 +167,7 @@ class SupportAndroidLibraryPlugin : Plugin<Project> {
     }
 }
 
-private fun setUpLint(lintOptions: LintOptions, baseline: File) {
+private fun setUpLint(lintOptions: LintOptions, baseline: File, snapshotVersion: Boolean) {
     // Always lint check NewApi as fatal.
     lintOptions.isAbortOnError = true
     lintOptions.isIgnoreWarnings = true
@@ -178,12 +185,21 @@ private fun setUpLint(lintOptions: LintOptions, baseline: File) {
     lintOptions.isNoLines = false
     lintOptions.isQuiet = true
 
-    lintOptions.error("NewApi")
+    lintOptions.fatal("NewApi")
 
-    // Set baseline file for all legacy lint warnings.
+    if (snapshotVersion) {
+        // Do not run missing translations checks on snapshot versions of the library.
+        lintOptions.disable("MissingTranslation")
+    } else {
+        lintOptions.fatal("MissingTranslation")
+    }
+
     if (System.getenv("GRADLE_PLUGIN_VERSION") != null) {
         lintOptions.check("NewApi")
-    } else if (baseline.exists()) {
+    }
+
+    // Set baseline file for all legacy lint warnings.
+    if (baseline.exists()) {
         lintOptions.baseline(baseline)
     }
 }

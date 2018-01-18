@@ -124,29 +124,46 @@ limitations under the License.
     </style>
 
     <!-- The styles for the regular and borderless buttons -->
-    <style name="CarButton" parent="android:Widget.Material.Button">
+    <style name="Widget.Car.Button" parent="Widget.AppCompat.Button">
         <item name="android:layout_height">@dimen/car_button_height</item>
         <item name="android:minWidth">@dimen/car_button_min_width</item>
         <item name="android:paddingStart">@dimen/car_button_horizontal_padding</item>
         <item name="android:paddingEnd">@dimen/car_button_horizontal_padding</item>
-        <item name="android:textStyle">normal</item>
         <item name="android:textSize">@dimen/car_action1_size</item>
-        <item name="android:textColor">@drawable/car_button_text_color</item>
-        <item name="android:textAllCaps">true</item>
         <item name="android:background">@drawable/car_button_background</item>
+        <item name="android:textColor">@drawable/car_button_text_color</item>
     </style>
 
-    <style name="CarButton.Borderless" parent="android:Widget.Material.Button.Borderless">
+    <style name="Widget.Car.Button.Borderless.Colored"
+           parent="Widget.AppCompat.Button.Borderless.Colored">
         <item name="android:layout_height">@dimen/car_button_height</item>
         <item name="android:paddingStart">@dimen/car_borderless_button_horizontal_padding</item>
         <item name="android:paddingEnd">@dimen/car_borderless_button_horizontal_padding</item>
-        <item name="android:textStyle">normal</item>
         <item name="android:textSize">@dimen/car_action1_size</item>
         <item name="android:textColor">@drawable/car_borderless_button_text_color</item>
-        <item name="android:textAllCaps">true</item>
     </style>
 
     <!-- Style for the progress bars -->
-    <style name="CarProgressBar.Horizontal"
-           parent="android:Widget.Material.ProgressBar.Horizontal"/>
+    <style name="Widget.Car.ProgressBar.Horizontal"
+           parent="Widget.AppCompat.ProgressBar.Horizontal">
+        <item name="android:minHeight">@dimen/car_progress_bar_height</item>
+        <item name="android:maxHeight">@dimen/car_progress_bar_height</item>
+    </style>
+
+    <style name="Widget.Car.EditText" parent="Widget.AppCompat.EditText">
+        <item name="android:textColor">?attr/editTextColor</item>
+        <item name="android:textAppearance">@style/CarBody1</item>
+    </style>
+
+    <!-- Styles for TextInputLayout hints -->
+    <style name="CarHintTextAppearance" parent="CarBody2">
+    </style>
+
+    <style name="CarListVerticalDivider">
+        <item name="android:layout_width">@dimen/car_vertical_line_divider_width</item>
+        <item name="android:layout_height">@dimen/car_vertical_line_divider_height</item>
+        <item name="android:layout_marginStart">@dimen/car_padding_4</item>
+        <item name="android:background">@color/car_list_divider</item>
+    </style>
+
 </resources>

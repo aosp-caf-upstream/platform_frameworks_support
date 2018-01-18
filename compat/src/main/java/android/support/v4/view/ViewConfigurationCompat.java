@@ -27,10 +27,7 @@ import java.lang.reflect.Method;
 
 /**
  * Helper for accessing features in {@link ViewConfiguration}.
- *
- * @deprecated Use {@link ViewConfiguration} directly.
  */
-@Deprecated
 public final class ViewConfigurationCompat {
     private static final String TAG = "ViewConfigCompat";
 
@@ -118,6 +115,18 @@ public final class ViewConfigurationCompat {
             return outValue.getDimension(context.getResources().getDisplayMetrics());
         }
         return 0;
+    }
+
+    /**
+     * @param config Used to get the hover slop directly from the {@link ViewConfiguration}.
+     *
+     * @return The hover slop value.
+     */
+    public static int getScaledHoverSlop(ViewConfiguration config) {
+        if (android.os.Build.VERSION.SDK_INT >= 28) {
+            return config.getScaledHoverSlop();
+        }
+        return config.getScaledTouchSlop() / 2;
     }
 
     private ViewConfigurationCompat() {}

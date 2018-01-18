@@ -30,7 +30,7 @@ if (supportRoot == null) {
 }
 def init = new Properties()
 ext.init = init
-rootProject.ext.versionChecker = new GMavenVersionChecker(rootProject)
+rootProject.ext.versionChecker = new GMavenVersionChecker(rootProject.logger)
 ext.runningInBuildServer = System.env.DIST_DIR != null && System.env.OUT_DIR != null
 
 apply from: "${supportRoot}/buildSrc/dependencies.gradle"
@@ -63,27 +63,15 @@ def getFullSdkPath() {
 }
 
 def setSdkInLocalPropertiesFile() {
-    ext.buildToolsVersion = '27.0.1'
-    final String fullSdkPath = getFullSdkPath();
-    if (file(fullSdkPath).exists()) {
-        project.ext.currentSdk = 28
-        project.ext.androidJar =
-                files("${fullSdkPath}/platforms/android-${project.currentSdk}/android.jar")
-        project.ext.androidSrcJar =
-                file("${fullSdkPath}/platforms/android-${project.currentSdk}/android-stubs-src.jar")
-        project.ext.androidApiTxt = null
+    final File fullSdkPath = file(getFullSdkPath())
+    if (fullSdkPath.exists()) {
+        project.ext.fullSdkPath = fullSdkPath
         File props = file("local.properties")
-        props.write "sdk.dir=${fullSdkPath}"
+        props.write "sdk.dir=${fullSdkPath.getAbsolutePath()}"
         ext.usingFullSdk = true
     } else {
-        gradle.ext.currentSdk = 'current'
-        project.ext.androidJar = files("${repos.prebuiltsRoot}/sdk/current/android.jar")
-        project.ext.androidSrcJar = null
-        project.ext.androidApiTxt = file("${repos.prebuiltsRoot}/sdk/api/26.txt")
-        System.setProperty('android.dir', "${supportRootFolder}/../../")
-        File props = file("local.properties")
-        props.write "android.dir=../../"
-        ext.usingFullSdk = false
+        throw Exception("You are using non ub-supportlib-* checkout. You need to check out "
+                + "ub-supportlib-* to work on support library. See go/supportlib for details.")
     }
 }
 
@@ -164,8 +152,6 @@ def createJacocoAntUberJarTask() {
 }
 
 def configureSubProjects() {
-    // lint every library
-    def lintTask = project.tasks.create("lint")
     subprojects {
         repos.addMavenRepositories(repositories)
 
@@ -180,13 +166,10 @@ def configureSubProjects() {
             return
         }
 
-        project.ext.currentSdk = rootProject.ext.currentSdk
-
         project.plugins.whenPluginAdded { plugin ->
             def isAndroidLibrary = "com.android.build.gradle.LibraryPlugin"
                     .equals(plugin.class.name)
             def isAndroidApp = "com.android.build.gradle.AppPlugin".equals(plugin.class.name)
-            def isJavaLibrary = "org.gradle.api.plugins.JavaPlugin".equals(plugin.class.name)
 
             if (isAndroidLibrary || isAndroidApp) {
                 // Enable code coverage for debug builds only if we are not running inside the IDE,
@@ -215,29 +198,6 @@ def configureSubProjects() {
                         jarifyTask.dependsOn v.getJavaCompiler()
                         v.assemble.dependsOn jarifyTask
                     }
-                }
-
-                // Enforce NewApi lint check as fatal.
-                project.android.lintOptions.fatal 'NewApi'
-                lintTask.dependsOn {project.lint}
-            }
-
-            if (isAndroidLibrary || isJavaLibrary) {
-                // Add library to the aggregate dependency report.
-                task allDeps(type: DependencyReportTask) {}
-
-                project.afterEvaluate {
-                    Upload uploadTask = (Upload) project.tasks.uploadArchives;
-                    uploadTask.repositories.mavenDeployer {
-                        repository(url: uri("$rootProject.ext.supportRepoOut"))
-                        setUniqueVersion(true)
-                    }
-
-                    // Before the upload, make sure the repo is ready.
-                    uploadTask.dependsOn rootProject.tasks.prepareRepo
-
-                    // Make the mainupload depend on this one.
-                    mainUpload.dependsOn uploadTask
                 }
             }
         }

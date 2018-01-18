@@ -54,7 +54,6 @@ import android.support.v4.os.BuildCompat;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 import androidx.app.slice.compat.SliceProviderCompat;
@@ -395,7 +394,11 @@ public final class Slice {
         return toString("");
     }
 
-    private String toString(String indent) {
+    /**
+     * @hide
+     */
+    @RestrictTo(Scope.LIBRARY)
+    public String toString(String indent) {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < mItems.length; i++) {
             sb.append(indent);
@@ -418,20 +421,34 @@ public final class Slice {
     }
 
     /**
+     */
+    public static @Nullable Slice bindSlice(Context context, @NonNull Uri uri) {
+        throw new RuntimeException("Stub, to be removed");
+    }
+
+    /**
+     */
+    public static @Nullable Slice bindSlice(Context context, @NonNull Intent intent) {
+        throw new RuntimeException("Stub, to be removed");
+    }
+
+    /**
      * Turns a slice Uri into slice content.
      *
+     * @hide
      * @param context Context to be used.
      * @param uri The URI to a slice provider
      * @return The Slice provided by the app or null if none is given.
      * @see Slice
      */
+    @RestrictTo(Scope.LIBRARY_GROUP)
     @SuppressWarnings("NewApi")
-    public static @Nullable Slice bindSlice(Context context, @NonNull Uri uri) {
-        // TODO: Hide this and only allow binding through SliceView.
+    public static @Nullable Slice bindSlice(Context context, @NonNull Uri uri,
+                List<SliceSpec> supportedSpecs) {
         if (BuildCompat.isAtLeastP()) {
-            return callBindSlice(context, uri, Collections.<SliceSpec>emptyList());
+            return callBindSlice(context, uri, supportedSpecs);
         } else {
-            return SliceProviderCompat.bindSlice(context, uri, Collections.<SliceSpec>emptyList());
+            return SliceProviderCompat.bindSlice(context, uri, supportedSpecs);
         }
     }
 
@@ -448,6 +465,7 @@ public final class Slice {
      * {@link ContentProvider} associated with the given intent this will throw
      * {@link IllegalArgumentException}.
      *
+     * @hide
      * @param context The context to use.
      * @param intent The intent associated with a slice.
      * @return The Slice provided by the app or null if none is given.
@@ -455,14 +473,14 @@ public final class Slice {
      * @see SliceProvider#onMapIntentToUri(Intent)
      * @see Intent
      */
+    @RestrictTo(Scope.LIBRARY_GROUP)
     @SuppressWarnings("NewApi")
-    public static @Nullable Slice bindSlice(Context context, @NonNull Intent intent) {
-        // TODO: Hide this and only allow binding through SliceView.
+    public static @Nullable Slice bindSlice(Context context, @NonNull Intent intent,
+                List<SliceSpec> supportedSpecs) {
         if (BuildCompat.isAtLeastP()) {
-            return callBindSlice(context, intent, Collections.<SliceSpec>emptyList());
+            return callBindSlice(context, intent, supportedSpecs);
         } else {
-            return SliceProviderCompat.bindSlice(context, intent,
-                    Collections.<SliceSpec>emptyList());
+            return SliceProviderCompat.bindSlice(context, intent, supportedSpecs);
         }
     }
 

@@ -22,5 +22,6 @@
         <activity android:name="androidx.car.widget.ColumnCardViewTestActivity"/>
         <activity android:name="androidx.car.widget.PagedListViewSavedStateActivity"/>
         <activity android:name="androidx.car.widget.PagedListViewTestActivity"/>
+        <activity android:name="androidx.car.widget.DividerVisibilityManagerTestActivity"/>
     </application>
 </manifest>
