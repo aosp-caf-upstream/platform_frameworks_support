@@ -61,9 +61,6 @@ project(':support-v13').projectDir = new File(rootDir, 'v13')
 include ':leanback-v17'
 project(':leanback-v17').projectDir = new File(rootDir, 'leanback')
 
-include ':design'
-project(':design').projectDir = new File(rootDir, 'design')
-
 include ':percent'
 project(':percent').projectDir = new File(rootDir, 'percent')
 
@@ -123,6 +120,9 @@ project(':slices-view').projectDir = new File(rootDir, 'slices/view')
 
 include ':slices-builders'
 project(':slices-builders').projectDir = new File(rootDir, 'slices/builders')
+
+include ':textclassifier'
+project(':textclassifier').projectDir = new File(rootDir, 'textclassifier')
 
 include ':webkit-codegen'
 project(':webkit-codegen').projectDir = new File(rootDir, 'webkit-codegen')
@@ -225,11 +225,8 @@ project(':support-media-compat-test-lib').projectDir = new File(rootDir, 'media-
 //
 /////////////////////////////
 
+apply(from: 'include-composite-deps.gradle')
 File externalRoot = new File(rootDir, '../../external')
-
-includeBuild new File(externalRoot, 'doclava')
-
-includeBuild new File(externalRoot, 'jdiff')
 
 include ':noto-emoji-compat'
 project(':noto-emoji-compat').projectDir = new File(externalRoot, 'noto-fonts/emoji-compat')

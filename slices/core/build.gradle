@@ -15,6 +15,7 @@
  */
 
 import static android.support.dependencies.DependenciesKt.*
+
 import android.support.LibraryGroups
 import android.support.LibraryVersions
 
@@ -27,15 +28,8 @@ dependencies {
     implementation project(":appcompat-v7")
 
     androidTestImplementation(TEST_RUNNER)
-}
-
-android {
-    sourceSets {
-        main.res.srcDirs = [
-                'res',
-                'res-public'
-        ]
-    }
+    androidTestImplementation(MOCKITO_CORE, libs.exclude_bytebuddy)
+    androidTestImplementation(DEXMAKER_MOCKITO, libs.exclude_bytebuddy)
 }
 
 supportLibrary {

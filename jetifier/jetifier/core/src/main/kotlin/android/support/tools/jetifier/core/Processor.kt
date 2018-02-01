@@ -30,7 +30,6 @@ import android.support.tools.jetifier.core.transform.resource.XmlResourcesTransf
 import android.support.tools.jetifier.core.utils.Log
 import java.io.File
 import java.io.FileNotFoundException
-import java.nio.file.Files
 import java.nio.file.Path
 
 /**
@@ -38,13 +37,44 @@ import java.nio.file.Path
  * the registered [Transformer]s over the set and creates new archives that will contain the
  * transformed files.
  */
-class Processor(private val config : Config) : ArchiveItemVisitor {
+class Processor private constructor (private val context: TransformationContext)
+    : ArchiveItemVisitor {
 
     companion object {
         private const val TAG = "Processor"
-    }
 
-    private val context = TransformationContext(config)
+        /**
+         * Value of "restrictToPackagePrefixes" config for reversed jetification.
+         */
+        private const val REVERSE_RESTRICT_TO_PACKAGE = "androidx/support"
+
+        /**
+         * Creates a new instance of the [Processor].
+         * [config] Transformation configuration
+         * [reversedMode] Whether the processor should run in reversed mode
+         * [rewritingSupportLib] Whether we are rewriting the support library itself
+         */
+        fun createProcessor(
+            config: Config,
+            reversedMode: Boolean = false,
+            rewritingSupportLib: Boolean = false
+        ): Processor {
+            var newConfig = config
+
+            if (reversedMode) {
+                newConfig = Config(
+                    restrictToPackagePrefixes = listOf(REVERSE_RESTRICT_TO_PACKAGE),
+                    rewriteRules = emptyList(), // We don't need those
+                    pomRewriteRules = emptyList(), // TODO: This will need a new set of rules
+                    typesMap = config.typesMap.reverseMapOrDie(),
+                    proGuardMap = config.proGuardMap.reverseMapOrDie()
+                )
+            }
+
+            val context = TransformationContext(newConfig, rewritingSupportLib)
+            return Processor(context)
+        }
+    }
 
     private val transformers = listOf(
             // Register your transformers here
@@ -62,7 +92,7 @@ class Processor(private val config : Config) : ArchiveItemVisitor {
      * - [XmlResourcesTransformer] for java native code
      * - [ProGuardTransformer] for PorGuard files
      */
-    fun transform(inputLibraries: Set<File>, outputPath: Path) : TransformationResult {
+    fun transform(inputLibraries: Set<File>, outputPath: Path): TransformationResult {
         // 1) Extract and load all libraries
         val libraries = loadLibraries(inputLibraries)
 
@@ -70,7 +100,7 @@ class Processor(private val config : Config) : ArchiveItemVisitor {
         val pomFiles = scanPomFiles(libraries)
 
         // 3) Transform all the libraries
-        libraries.forEach{ transformLibrary(it) }
+        libraries.forEach { transformLibrary(it) }
 
         if (context.wasErrorFound()) {
             throw IllegalArgumentException("There were ${context.mappingNotFoundFailuresCount}" +
@@ -84,7 +114,7 @@ class Processor(private val config : Config) : ArchiveItemVisitor {
         transformPomFiles(pomFiles)
 
         // 5) Repackage the libraries back to archives
-        val outputLibraries = libraries.map{ it.writeSelfToDir(outputPath) }.toSet()
+        val outputLibraries = libraries.map { it.writeSelfToDir(outputPath) }.toSet()
 
         // TODO: Filter out only the libraries that have been really changed
         return TransformationResult(
@@ -92,7 +122,7 @@ class Processor(private val config : Config) : ArchiveItemVisitor {
             filesToAdd = outputLibraries)
     }
 
-    private fun loadLibraries(inputLibraries : Iterable<File>) : List<Archive> {
+    private fun loadLibraries(inputLibraries: Iterable<File>): List<Archive> {
         val libraries = mutableListOf<Archive>()
         for (library in inputLibraries) {
             if (!library.canRead()) {
@@ -104,8 +134,8 @@ class Processor(private val config : Config) : ArchiveItemVisitor {
         return libraries.toList()
     }
 
-    private fun scanPomFiles(libraries: List<Archive>) : List<PomDocument> {
-        val scanner = PomScanner(config)
+    private fun scanPomFiles(libraries: List<Archive>): List<PomDocument> {
+        val scanner = PomScanner(context.config)
 
         libraries.forEach { scanner.scanArchiveForPomFile(it) }
         if (scanner.wasErrorFound()) {
@@ -118,7 +148,7 @@ class Processor(private val config : Config) : ArchiveItemVisitor {
 
     private fun transformPomFiles(files: List<PomDocument>) {
         files.forEach {
-            it.applyRules(config.pomRewriteRules)
+            it.applyRules(context.config.pomRewriteRules)
             it.saveBackToFileIfNeeded()
         }
     }
@@ -131,7 +161,7 @@ class Processor(private val config : Config) : ArchiveItemVisitor {
     }
 
     override fun visit(archive: Archive) {
-        archive.files.forEach{ it.accept(this) }
+        archive.files.forEach { it.accept(this) }
     }
 
     override fun visit(archiveFile: ArchiveFile) {
@@ -145,5 +175,4 @@ class Processor(private val config : Config) : ArchiveItemVisitor {
         Log.i(TAG, "[Applied: %s] %s", transformer.javaClass.simpleName, archiveFile.relativePath)
         transformer.runTransform(archiveFile)
     }
-
 }

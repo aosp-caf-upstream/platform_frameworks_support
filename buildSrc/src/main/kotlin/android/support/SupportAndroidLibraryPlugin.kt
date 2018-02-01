@@ -136,32 +136,14 @@ class SupportAndroidLibraryPlugin : Plugin<Project> {
 
         project.tasks.getByName("uploadArchives").dependsOn("lintRelease")
 
-        SourceJarTaskHelper.setUpAndroidProject(project, library)
+        setUpSoureJarTaskForAndroidProject(project, library)
 
         val toolChain = ErrorProneToolChain.create(project)
         library.buildTypes.create("errorProne")
         library.libraryVariants.all { libraryVariant ->
             if (libraryVariant.getBuildType().getName().equals("errorProne")) {
                 @Suppress("DEPRECATION")
-                libraryVariant.getJavaCompile().toolChain = toolChain
-
-                @Suppress("DEPRECATION")
-                val compilerArgs = libraryVariant.javaCompile.options.compilerArgs
-                compilerArgs += arrayListOf(
-                        "-XDcompilePolicy=simple", // Workaround for b/36098770
-
-                        // Enforce the following checks.
-                        "-Xep:RestrictTo:OFF",
-                        "-Xep:ParameterNotNullable:ERROR",
-                        "-Xep:MissingOverride:ERROR",
-                        "-Xep:JdkObsolete:ERROR",
-                        "-Xep:NarrowingCompoundAssignment:ERROR",
-                        "-Xep:ClassNewInstance:ERROR",
-                        "-Xep:ClassCanBeStatic:ERROR",
-                        "-Xep:SynchronizeOnNonFinalField:ERROR",
-                        "-Xep:OperatorPrecedence:ERROR",
-                        "-Xep:IntLongMath:ERROR"
-                )
+                libraryVariant.javaCompile.configureWithErrorProne(toolChain)
             }
         }
     }
