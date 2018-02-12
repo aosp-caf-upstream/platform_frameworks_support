@@ -26,6 +26,11 @@ class ClassFilesMoveTest {
                 RewriteRule("android/support/v7/preference/R(.*)", "ignore"),
                 RewriteRule("android/support/v4/(.*)", "ignore")
             ),
+            slRules = listOf(
+                RewriteRule("android/support/annotation/(.*)", "ignore"),
+                RewriteRule("android/support/v7/preference/R(.*)", "ignore"),
+                RewriteRule("android/support/v4/(.*)", "ignore")
+            ),
             pomRewriteRules = emptyList(),
             typesMap = TypesMap(mapOf(
                 "android/support/v7/preference/Preference"
@@ -80,7 +85,7 @@ class ClassFilesMoveTest {
         val inputFile = File(javaClass.getResource(inputZipPath).file)
 
         val tempDir = createTempDir()
-        val result = processor.transform(setOf(inputFile), tempDir.toPath())
+        val result = processor.transform(setOf(inputFile), tempDir.toPath(), true)
 
         Truth.assertThat(result.filesToAdd).hasSize(1)
         testArchivesAreSame(result.filesToAdd.first(),
@@ -101,7 +106,7 @@ class ClassFilesMoveTest {
         val inputFile = File(javaClass.getResource(inputZipPath).file)
 
         val tempDir = createTempDir()
-        val result = processor.transform(setOf(inputFile), tempDir.toPath())
+        val result = processor.transform(setOf(inputFile), tempDir.toPath(), true)
 
         Truth.assertThat(result.filesToAdd).hasSize(1)
         testArchivesAreSame(result.filesToAdd.first(),
@@ -124,13 +129,13 @@ class ClassFilesMoveTest {
             rewritingSupportLib = true)
         val inputFile = File(javaClass.getResource(inputZipPath).file)
         val tempDir = createTempDir()
-        val result = processor.transform(setOf(inputFile), tempDir.toPath())
+        val result = processor.transform(setOf(inputFile), tempDir.toPath(), true)
 
         // Take previous result & reverse it
         val processor2 = Processor.createProcessor(TEST_CONFIG,
             rewritingSupportLib = true,
             reversedMode = true)
-        val result2 = processor2.transform(setOf(result.filesToAdd.first()), tempDir.toPath())
+        val result2 = processor2.transform(setOf(result.filesToAdd.first()), tempDir.toPath(), true)
 
         testArchivesAreSame(result2.filesToAdd.first(),
             File(javaClass.getResource(inputZipPath).file))
@@ -149,7 +154,7 @@ class ClassFilesMoveTest {
         val inputFile = File(javaClass.getResource(inputZipPath).file)
 
         val tempDir = createTempDir()
-        val result = processor.transform(setOf(inputFile), tempDir.toPath())
+        val result = processor.transform(setOf(inputFile), tempDir.toPath(), true)
 
         Truth.assertThat(result.filesToAdd).hasSize(1)
         testArchivesAreSame(result.filesToAdd.first(),

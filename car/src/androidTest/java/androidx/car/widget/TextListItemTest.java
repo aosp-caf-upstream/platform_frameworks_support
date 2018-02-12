@@ -22,6 +22,7 @@ import static android.support.test.espresso.contrib.RecyclerViewActions.actionOn
 import static android.support.test.espresso.contrib.RecyclerViewActions.scrollToPosition;
 import static android.support.test.espresso.matcher.ViewMatchers.withId;
 
+import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.core.Is.is;
 import static org.hamcrest.core.IsEqual.equalTo;
@@ -38,6 +39,7 @@ import android.support.test.filters.SmallTest;
 import android.support.test.rule.ActivityTestRule;
 import android.support.test.runner.AndroidJUnit4;
 import android.support.v7.widget.LinearLayoutManager;
+import android.text.TextUtils;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.RelativeLayout;
@@ -67,6 +69,7 @@ public class TextListItemTest {
 
     private PagedListViewTestActivity mActivity;
     private PagedListView mPagedListView;
+    private ListItemAdapter mAdapter;
 
     @Before
     public void setUp() {
@@ -78,8 +81,9 @@ public class TextListItemTest {
         ListItemProvider provider = new ListItemProvider.ListProvider(
                 new ArrayList<>(items));
         try {
+            mAdapter = new ListItemAdapter(mActivity, provider);
             mActivityRule.runOnUiThread(() -> {
-                mPagedListView.setAdapter(new ListItemAdapter(mActivity, provider));
+                mPagedListView.setAdapter(mAdapter);
             });
         } catch (Throwable throwable) {
             throwable.printStackTrace();
@@ -200,6 +204,45 @@ public class TextListItemTest {
         assertThat(viewHolder.getSwitch().getVisibility(), is(equalTo(View.VISIBLE)));
         assertThat(viewHolder.getSwitch().isChecked(), is(equalTo(false)));
         assertThat(viewHolder.getSwitchDivider().getVisibility(), is(equalTo(View.VISIBLE)));
+    }
+
+    @Test
+    public void testSetSwitchState() {
+        TextListItem item0 = new TextListItem(mActivity);
+        item0.setSwitch(true, true, null);
+
+        setupPagedListView(Arrays.asList(item0));
+
+        item0.setSwitchState(false);
+        try {
+            mActivityRule.runOnUiThread(() -> mAdapter.notifyItemChanged(0));
+        } catch (Throwable throwable) {
+            throwable.printStackTrace();
+        }
+        // Wait for paged list view to layout by using espresso to scroll to a position.
+        onView(withId(R.id.recycler_view)).perform(scrollToPosition(0));
+
+        TextListItem.ViewHolder viewHolder = getViewHolderAtPosition(0);
+        assertThat(viewHolder.getSwitch().getVisibility(), is(equalTo(View.VISIBLE)));
+        assertThat(viewHolder.getSwitch().isChecked(), is(equalTo(false)));
+    }
+
+    @Test
+    public void testSetSwitchStateHasNoEffectIfSwitchIsNotEnabled() {
+        TextListItem item0 = new TextListItem(mActivity);
+        setupPagedListView(Arrays.asList(item0));
+
+        item0.setSwitchState(false);
+        try {
+            mActivityRule.runOnUiThread(() -> mAdapter.notifyItemChanged(0));
+        } catch (Throwable throwable) {
+            throwable.printStackTrace();
+        }
+        // Wait for paged list view to layout by using espresso to scroll to a position.
+        onView(withId(R.id.recycler_view)).perform(scrollToPosition(0));
+
+        TextListItem.ViewHolder viewHolder = getViewHolderAtPosition(0);
+        assertThat(viewHolder.getSwitch().getVisibility(), is(not(equalTo(View.VISIBLE))));
     }
 
     @Test
@@ -584,6 +627,43 @@ public class TextListItemTest {
         assertThat((double) viewHolder.itemView.getHeight(), is(closeTo(
                 InstrumentationRegistry.getContext().getResources().getDimension(
                         R.dimen.car_single_line_list_item_height), 1.0d)));
+    }
+
+    @Test
+    public void testRevertingViewBinder() throws Throwable {
+        TextListItem item0 = new TextListItem(mActivity);
+        item0.setBody("one item");
+        item0.addViewBinder(
+                (viewHolder) -> viewHolder.getBody().setEllipsize(TextUtils.TruncateAt.END),
+                (viewHolder -> viewHolder.getBody().setEllipsize(null)));
+
+        List<TextListItem> items = Arrays.asList(item0);
+        setupPagedListView(items);
+
+        TextListItem.ViewHolder viewHolder = getViewHolderAtPosition(0);
+
+        // Bind view holder to a new item - the customization made by item0 should be reverted.
+        TextListItem item1 = new TextListItem(mActivity);
+        item1.setBody("new item");
+        mActivityRule.runOnUiThread(() -> item1.bind(viewHolder));
+
+        assertThat(viewHolder.getBody().getEllipsize(), is(equalTo(null)));
+    }
+
+    @Test
+    public void testRemovingViewBinder() {
+        TextListItem item0 = new TextListItem(mActivity);
+        item0.setBody("one item");
+        ListItem.ViewBinder<TextListItem.ViewHolder> binder =
+                (viewHolder) -> viewHolder.getTitle().setEllipsize(TextUtils.TruncateAt.END);
+        item0.addViewBinder(binder);
+
+        assertTrue(item0.removeViewBinder(binder));
+
+        List<TextListItem> items = Arrays.asList(item0);
+        setupPagedListView(items);
+
+        assertThat(getViewHolderAtPosition(0).getBody().getEllipsize(), is(equalTo(null)));
     }
 
     @Test

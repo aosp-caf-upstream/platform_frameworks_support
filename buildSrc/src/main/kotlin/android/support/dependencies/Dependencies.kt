@@ -25,7 +25,7 @@ const val ESPRESSO_CONTRIB = "com.android.support.test.espresso:espresso-contrib
 const val ESPRESSO_CORE = "com.android.support.test.espresso:espresso-core:3.0.1"
 const val GOOGLE_COMPILE_TESTING = "com.google.testing.compile:compile-testing:0.11"
 const val GSON = "com.google.code.gson:gson:2.8.0"
-const val GUAVA = "com.google.guava:guava:21.0"
+const val GUAVA = "com.google.guava:guava:23.6-android"
 const val INTELLIJ_ANNOTATIONS = "com.intellij:annotations:12.0"
 const val JAVAPOET = "com.squareup:javapoet:1.8.0"
 const val JSR250 = "javax.annotation:javax.annotation-api:1.2"
@@ -60,4 +60,6 @@ const val SUPPORT_V4 = "com.android.support:support-v4:$SUPPORT_VERSION"
 
 // Arch libraries
 const val ARCH_LIFECYCLE_RUNTIME = "android.arch.lifecycle:runtime:1.1.0@aar"
+const val ARCH_LIFECYCLE_LIVEDATA_CORE = "android.arch.lifecycle:livedata-core:1.1.0@aar"
+const val ARCH_LIFECYCLE_VIEWMODEL = "android.arch.lifecycle:viewmodel:1.1.0@aar"
 const val ARCH_LIFECYCLE_EXTENSIONS = "android.arch.lifecycle:extensions:1.1.0@aar"
