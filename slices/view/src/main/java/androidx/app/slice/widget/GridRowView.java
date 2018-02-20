@@ -86,7 +86,6 @@ public class GridRowView extends SliceChildView implements View.OnClickListener 
 
     private int mRowIndex;
     private boolean mIsAllImages;
-    private @SliceView.SliceMode int mSliceMode = 0;
 
     private int mIconSize;
     private int mLargeIconSize;
@@ -126,11 +125,6 @@ public class GridRowView extends SliceChildView implements View.OnClickListener 
     }
 
     @Override
-    public int getMode() {
-        return mSliceMode;
-    }
-
-    @Override
     public void setTint(@ColorInt int tintColor) {
         super.setTint(tintColor);
         if (mGridContent != null) {
@@ -141,22 +135,18 @@ public class GridRowView extends SliceChildView implements View.OnClickListener 
     }
 
     /**
-     * This is called when GridView is being used as a small template.
+     * This is called when GridView is the parent template.
      */
     @Override
     public void setSlice(Slice slice) {
         resetView();
         mRowIndex = 0;
-        mSliceMode = SliceView.MODE_SMALL;
-        Slice.Builder sb = new Slice.Builder(slice.getUri());
-        sb.addSubSlice(slice);
-        Slice parentSlice = sb.build();
-        mGridContent = new GridContent(parentSlice.getItems().get(0));
+        mGridContent = new GridContent(slice.getItems().get(0));
         populateViews(mGridContent);
     }
 
     /**
-     * This is called when GridView is being used as a component in a large template.
+     * This is called when GridView is being used as a component in a larger template.
      */
     @Override
     public void setSliceItem(SliceItem slice, boolean isHeader, int index,
@@ -164,12 +154,18 @@ public class GridRowView extends SliceChildView implements View.OnClickListener 
         resetView();
         setSliceActionListener(observer);
         mRowIndex = index;
-        mSliceMode = SliceView.MODE_LARGE;
         mGridContent = new GridContent(slice);
         populateViews(mGridContent);
     }
 
     private void populateViews(GridContent gc) {
+        if (gc.getContentIntent() != null) {
+            EventInfo info = new EventInfo(getMode(), EventInfo.ACTION_TYPE_CONTENT,
+                    EventInfo.ROW_TYPE_GRID, mRowIndex);
+            Pair<SliceItem, EventInfo> tagItem = new Pair<>(gc.getContentIntent(), info);
+            mViewContainer.setTag(tagItem);
+            makeClickable(mViewContainer);
+        }
         mIsAllImages = gc.isAllImages();
         ArrayList<GridContent.CellContent> cells = gc.getGridContent();
         final int max = mIsAllImages ? MAX_IMAGES : MAX_ALL;
@@ -211,7 +207,7 @@ public class GridRowView extends SliceChildView implements View.OnClickListener 
      * Adds a cell to the grid view based on the provided {@link SliceItem}.
      */
     private void addCell(GridContent.CellContent cell, int index, int total) {
-        final int maxCellText = mSliceMode == SliceView.MODE_SMALL
+        final int maxCellText = getMode() == SliceView.MODE_SMALL
                 ? MAX_CELL_TEXT_SMALL
                 : MAX_CELL_TEXT;
         LinearLayout cellContainer = new LinearLayout(getContext());
@@ -227,7 +223,7 @@ public class GridRowView extends SliceChildView implements View.OnClickListener 
         boolean singleItem = cellItems.size() == 1;
         List<SliceItem> textItems = null;
         // In small format we display one text item and prefer titles
-        if (!singleItem && mSliceMode == SliceView.MODE_SMALL) {
+        if (!singleItem && getMode() == SliceView.MODE_SMALL) {
             // Get all our text items
             textItems = cellItems.stream().filter(new Predicate<SliceItem>() {
                 @Override
@@ -270,7 +266,7 @@ public class GridRowView extends SliceChildView implements View.OnClickListener 
                 EventInfo info = new EventInfo(getMode(), EventInfo.ACTION_TYPE_BUTTON,
                         EventInfo.ROW_TYPE_GRID, mRowIndex);
                 info.setPosition(EventInfo.POSITION_CELL, index, total);
-                Pair<SliceItem, EventInfo> tagItem = new Pair(contentIntentItem, info);
+                Pair<SliceItem, EventInfo> tagItem = new Pair<>(contentIntentItem, info);
                 cellContainer.setTag(tagItem);
                 makeClickable(cellContainer);
             }

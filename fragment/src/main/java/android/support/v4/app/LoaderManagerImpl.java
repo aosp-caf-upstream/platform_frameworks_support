@@ -152,7 +152,18 @@ class LoaderManagerImpl extends LoaderManager {
         @Override
         public void onLoadComplete(@NonNull Loader<D> loader, @Nullable D data) {
             if (DEBUG) Log.v(TAG, "onLoadComplete: " + this);
-            postValue(data);
+            if (Looper.myLooper() == Looper.getMainLooper()) {
+                setValue(data);
+            } else {
+                // The Loader#deliverResult method that calls this should
+                // only be called on the main thread, so this should never
+                // happen, but we don't want to lose the data
+                if (DEBUG) {
+                    Log.w(TAG, "onLoadComplete was incorrectly called on a "
+                            + "background thread");
+                }
+                postValue(data);
+            }
         }
 
         @Override
@@ -253,6 +264,19 @@ class LoaderManagerImpl extends LoaderManager {
         }
 
         private SparseArrayCompat<LoaderInfo> mLoaders = new SparseArrayCompat<>();
+        private boolean mCreatingLoader = false;
+
+        void startCreatingLoader() {
+            mCreatingLoader = true;
+        }
+
+        boolean isCreatingLoader() {
+            return mCreatingLoader;
+        }
+
+        void finishCreatingLoader() {
+            mCreatingLoader = false;
+        }
 
         void putLoader(int id, @NonNull LoaderInfo info) {
             mLoaders.put(id, info);
@@ -294,6 +318,7 @@ class LoaderManagerImpl extends LoaderManager {
                 LoaderInfo info = mLoaders.valueAt(index);
                 info.destroy();
             }
+            mLoaders.clear();
         }
 
         public void dump(String prefix, FileDescriptor fd, PrintWriter writer, String[] args) {
@@ -313,8 +338,6 @@ class LoaderManagerImpl extends LoaderManager {
     private final @NonNull LifecycleOwner mLifecycleOwner;
     private final @NonNull LoaderViewModel mLoaderViewModel;
 
-    private boolean mCreatingLoader;
-
     LoaderManagerImpl(@NonNull LifecycleOwner lifecycleOwner,
             @NonNull ViewModelStore viewModelStore) {
         mLifecycleOwner = lifecycleOwner;
@@ -325,8 +348,9 @@ class LoaderManagerImpl extends LoaderManager {
     @NonNull
     private <D> Loader<D> createAndInstallLoader(int id, @Nullable Bundle args,
             @NonNull LoaderCallbacks<D> callback) {
+        LoaderInfo<D> info;
         try {
-            mCreatingLoader = true;
+            mLoaderViewModel.startCreatingLoader();
             Loader<D> loader = callback.onCreateLoader(id, args);
             if (loader.getClass().isMemberClass()
                     && !Modifier.isStatic(loader.getClass().getModifiers())) {
@@ -334,13 +358,13 @@ class LoaderManagerImpl extends LoaderManager {
                         + "must not be a non-static inner member class: "
                         + loader);
             }
-            LoaderInfo<D> info = new LoaderInfo<>(id, args, loader);
+            info = new LoaderInfo<>(id, args, loader);
             if (DEBUG) Log.v(TAG, "  Created new loader " + info);
             mLoaderViewModel.putLoader(id, info);
-            return info.setCallback(mLifecycleOwner, callback);
         } finally {
-            mCreatingLoader = false;
+            mLoaderViewModel.finishCreatingLoader();
         }
+        return info.setCallback(mLifecycleOwner, callback);
     }
 
     @MainThread
@@ -348,7 +372,7 @@ class LoaderManagerImpl extends LoaderManager {
     @Override
     public <D> Loader<D> initLoader(int id, @Nullable Bundle args,
             @NonNull LoaderCallbacks<D> callback) {
-        if (mCreatingLoader) {
+        if (mLoaderViewModel.isCreatingLoader()) {
             throw new IllegalStateException("Called while creating a loader");
         }
         if (Looper.getMainLooper() != Looper.myLooper()) {
@@ -373,7 +397,7 @@ class LoaderManagerImpl extends LoaderManager {
     @Override
     public <D> Loader<D> restartLoader(int id, @Nullable Bundle args,
             @NonNull LoaderCallbacks<D> callback) {
-        if (mCreatingLoader) {
+        if (mLoaderViewModel.isCreatingLoader()) {
             throw new IllegalStateException("Called while creating a loader");
         }
         if (Looper.getMainLooper() != Looper.myLooper()) {
@@ -390,7 +414,7 @@ class LoaderManagerImpl extends LoaderManager {
     @MainThread
     @Override
     public void destroyLoader(int id) {
-        if (mCreatingLoader) {
+        if (mLoaderViewModel.isCreatingLoader()) {
             throw new IllegalStateException("Called while creating a loader");
         }
         if (Looper.getMainLooper() != Looper.myLooper()) {
@@ -408,7 +432,7 @@ class LoaderManagerImpl extends LoaderManager {
     @Nullable
     @Override
     public <D> Loader<D> getLoader(int id) {
-        if (mCreatingLoader) {
+        if (mLoaderViewModel.isCreatingLoader()) {
             throw new IllegalStateException("Called while creating a loader");
         }
 
@@ -416,15 +440,8 @@ class LoaderManagerImpl extends LoaderManager {
         return info != null ? info.getLoader() : null;
     }
 
-    /**
-     * Mark all Loaders associated with this LoaderManager for redelivery of their current
-     * data (if any) the next time the LifecycleOwner is started. In cases where no data has
-     * yet been delivered, this is effectively a no-op. In cases where data has already been
-     * delivered via {@link LoaderCallbacks#onLoadFinished(Loader, Object)}, this will ensure
-     * that {@link LoaderCallbacks#onLoadFinished(Loader, Object)} is called again with the
-     * same data.
-     */
-    void markForRedelivery() {
+    @Override
+    public void markForRedelivery() {
         mLoaderViewModel.markForRedelivery();
     }
 

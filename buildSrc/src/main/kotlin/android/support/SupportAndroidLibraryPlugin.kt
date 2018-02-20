@@ -17,6 +17,7 @@
 package android.support
 
 import android.support.SupportConfig.INSTRUMENTATION_RUNNER
+import android.support.license.CheckExternalDependencyLicensesTask
 import com.android.build.gradle.LibraryExtension
 import com.android.build.gradle.internal.dsl.LintOptions
 import com.android.build.gradle.tasks.GenerateBuildConfig
@@ -37,7 +38,7 @@ class SupportAndroidLibraryPlugin : Plugin<Project> {
         val supportLibraryExtension = project.extensions.create("supportLibrary",
                 SupportLibraryExtension::class.java, project)
         apply(project, supportLibraryExtension)
-
+        CheckExternalDependencyLicensesTask.configure(project)
         val isCoreSupportLibrary = project.rootProject.name == "support"
 
         project.afterEvaluate {
@@ -47,9 +48,6 @@ class SupportAndroidLibraryPlugin : Plugin<Project> {
             library.defaultConfig.minSdkVersion(supportLibraryExtension.minSdkVersion)
 
             if (supportLibraryExtension.legacySourceLocation) {
-                // We use a non-standard manifest path.
-                library.sourceSets.getByName("main").manifest.srcFile("AndroidManifest.xml")
-
                 // We use a non-standard test directory structure.
                 val androidTest = library.sourceSets.getByName("androidTest")
                 androidTest.setRoot("tests")
@@ -139,6 +137,7 @@ class SupportAndroidLibraryPlugin : Plugin<Project> {
         setUpSoureJarTaskForAndroidProject(project, library)
 
         val toolChain = ErrorProneToolChain.create(project)
+        project.dependencies.add("errorprone", ERROR_PRONE_VERSION)
         library.buildTypes.create("errorProne")
         library.libraryVariants.all { libraryVariant ->
             if (libraryVariant.getBuildType().getName().equals("errorProne")) {
@@ -174,10 +173,6 @@ private fun setUpLint(lintOptions: LintOptions, baseline: File, snapshotVersion:
         lintOptions.disable("MissingTranslation")
     } else {
         lintOptions.fatal("MissingTranslation")
-    }
-
-    if (System.getenv("GRADLE_PLUGIN_VERSION") != null) {
-        lintOptions.check("NewApi")
     }
 
     // Set baseline file for all legacy lint warnings.

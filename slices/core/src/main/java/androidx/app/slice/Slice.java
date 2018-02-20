@@ -23,7 +23,9 @@ import static android.app.slice.Slice.HINT_LIST;
 import static android.app.slice.Slice.HINT_LIST_ITEM;
 import static android.app.slice.Slice.HINT_NO_TINT;
 import static android.app.slice.Slice.HINT_PARTIAL;
+import static android.app.slice.Slice.HINT_SEE_MORE;
 import static android.app.slice.Slice.HINT_SELECTED;
+import static android.app.slice.Slice.HINT_SHORTCUT;
 import static android.app.slice.Slice.HINT_SUMMARY;
 import static android.app.slice.Slice.HINT_TITLE;
 import static android.app.slice.SliceItem.FORMAT_ACTION;
@@ -80,7 +82,8 @@ public final class Slice {
      */
     @RestrictTo(Scope.LIBRARY)
     @StringDef({HINT_TITLE, HINT_LIST, HINT_LIST_ITEM, HINT_LARGE, HINT_ACTIONS, HINT_SELECTED,
-            HINT_HORIZONTAL, HINT_NO_TINT, HINT_PARTIAL, HINT_SUMMARY})
+            HINT_HORIZONTAL, HINT_NO_TINT, HINT_PARTIAL, HINT_SUMMARY, HINT_SEE_MORE,
+            HINT_SHORTCUT})
     public @interface SliceHint{ }
 
     private final SliceItem[] mItems;

@@ -25,7 +25,7 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.annotation.RestrictTo;
 
-import androidx.app.slice.Slice;
+import androidx.app.slice.builders.SliceAction;
 
 /**
  * @hide
@@ -43,14 +43,36 @@ public interface GridBuilder {
     TemplateBuilderImpl createGridBuilder(Uri uri);
 
     /**
-     * Add a cell to this builder. Expected to be a builder from {@link #createGridBuilder};
+     * Add a cell to this builder. Expected to be a builder from {@link #createGridBuilder}.
      */
     void addCell(TemplateBuilderImpl impl);
 
     /**
-     * Builds a standalone slice of this grid builder (i.e. not contained within a List).
+     * If all content in a slice cannot be shown, the cell added here will be displayed where the
+     * content is cut off. This cell should have an affordance to take the user to an activity to
+     * see all of the content. Expected to be a builder from {@link #createGridBuilder}.
+     * <p>
+     * Only one see more affordance can be added, this throws {@link IllegalStateException} if
+     * a row or action has been previously added.
+     * </p>
      */
-    Slice buildIndividual();
+    void addSeeMoreCell(TemplateBuilderImpl impl);
+
+    /**
+     * If all content in a slice cannot be shown, a "see more" affordance will be displayed where
+     * the content is cut off. The action added here should take the user to an activity to see
+     * all of the content, and will be invoked when the "see more" affordance is tapped.
+     * <p>
+     * Only one see more affordance can be added, this throws {@link IllegalStateException} if
+     * a row or action has been previously added.
+     * </p>
+     */
+    void addSeeMoreAction(PendingIntent intent);
+
+    /**
+     * Sets the action to be invoked if the user taps on the main content of the template.
+     */
+    void setPrimaryAction(SliceAction action);
 
     /**
      */

@@ -26,7 +26,7 @@ import android.support.annotation.Nullable;
 import android.support.annotation.RestrictTo;
 
 import androidx.app.slice.Slice;
-import androidx.app.slice.SliceSpec;
+import androidx.app.slice.builders.SliceAction;
 
 
 /**
@@ -37,8 +37,8 @@ public class GridBuilderBasicImpl extends TemplateBuilderImpl implements GridBui
 
     /**
      */
-    public GridBuilderBasicImpl(Slice.Builder b, SliceSpec spec) {
-        super(b, spec);
+    public GridBuilderBasicImpl(@NonNull ListBuilderBasicImpl parent) {
+        super(parent.createChildBuilder(), null);
     }
 
     /**
@@ -65,9 +65,19 @@ public class GridBuilderBasicImpl extends TemplateBuilderImpl implements GridBui
     /**
      */
     @Override
-    public Slice buildIndividual() {
-        // Empty slice, nothing useful from a grid to basic.
-        return getBuilder().build();
+    public void addSeeMoreCell(TemplateBuilderImpl impl) {
+    }
+
+    /**
+     */
+    @Override
+    public void addSeeMoreAction(PendingIntent intent) {
+    }
+
+    /**
+     */
+    @Override
+    public void setPrimaryAction(SliceAction action) {
     }
 
     /**
