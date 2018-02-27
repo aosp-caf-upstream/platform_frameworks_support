@@ -9,6 +9,7 @@ plugins {
 dependencies {
     api project(':appcompat-v7')
     api project(':cardview-v7')
+    api("com.android.support:design:28.0.0-SNAPSHOT", { transitive = false })
     api project(':support-annotations')
     api project(':support-v4')
     api project(':recyclerview-v7')
@@ -38,6 +39,5 @@ supportLibrary {
     inceptionYear = "2017"
     description = "Android Car Support UI"
     java8Library = true
-    legacySourceLocation = true
     minSdkVersion = 24
 }

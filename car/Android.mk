@@ -18,7 +18,12 @@ LOCAL_PATH := $(call my-dir)
 # Applications that use this library must specify
 #
 #   LOCAL_STATIC_ANDROID_LIBRARIES := \
-#       android-support-car
+#       android-support-car\
+#       android-support-design \
+#       android-support-v4 \
+#       android-support-v7-appcompat \
+#       android-support-v7-cardview \
+#       android-support-v7-recyclerview
 #
 # in their makefiles to include the resources and their dependencies in their package.
 include $(CLEAR_VARS)
@@ -27,9 +32,11 @@ LOCAL_MODULE := android-support-car
 LOCAL_SDK_VERSION := $(SUPPORT_CURRENT_SDK_VERSION)
 LOCAL_SRC_FILES := $(call all-java-files-under,src/main/java)
 LOCAL_RESOURCE_DIR := $(LOCAL_PATH)/res
+LOCAL_MANIFEST_FILE := src/main/AndroidManifest.xml
 LOCAL_JAVA_LIBRARIES := \
         android-support-annotations
 LOCAL_SHARED_ANDROID_LIBRARIES := \
+        android-support-design \
         android-support-v4 \
         android-support-v7-appcompat \
         android-support-v7-cardview \

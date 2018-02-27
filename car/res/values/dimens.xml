@@ -30,6 +30,8 @@ limitations under the License.
     <dimen name="car_keyline_2_neg">-96dp</dimen>
     <dimen name="car_keyline_3_neg">-112dp</dimen>
     <dimen name="car_keyline_4_neg">-148dp</dimen>
+    <!-- The diff between keyline 1 and keyline 3. -->
+    <dimen name="car_keyline_1_keyline_3_diff">88dp</dimen>
 
     <!-- Paddings -->
     <dimen name="car_padding_1">4dp</dimen>
@@ -79,6 +81,7 @@ limitations under the License.
 
     <!-- Application Bar -->
     <dimen name="car_app_bar_height">80dp</dimen>
+    <dimen name="car_app_bar_default_elevation">8dp</dimen>
 
     <!-- Action Bars -->
     <dimen name="car_action_bar_height">128dp</dimen>
@@ -110,15 +113,16 @@ limitations under the License.
     <!-- Sub Header -->
     <dimen name="car_sub_header_height">76dp</dimen>
 
-    <!-- Slider -->
-    <dimen name="car_slider_height">6dp</dimen>
-    <dimen name="car_slider_knob_size">20dp</dimen>
+    <!-- Seekbar -->
+    <dimen name="car_seekbar_height">6dp</dimen>
+    <dimen name="car_seekbar_thumb_size">20dp</dimen>
+    <dimen name="car_seekbar_thumb_stroke">1dp</dimen>
 
     <!-- Scroll Bar -->
     <dimen name="car_scroll_bar_padding">@dimen/car_padding_2</dimen>
 
     <!-- Scroll Bar Thumb -->
-    <dimen name="car_scroll_bar_thumb_width">@dimen/car_slider_height</dimen>
+    <dimen name="car_scroll_bar_thumb_width">@dimen/car_seekbar_height</dimen>
     <dimen name="car_scroll_bar_thumb_margin">@dimen/car_padding_1</dimen>
 
     <!-- Scroll Bar and Alpha Jump Buttons -->
@@ -126,7 +130,7 @@ limitations under the License.
     <dimen name="car_alpha_jump_button_size">@dimen/car_scroll_bar_button_size</dimen>
 
     <!-- Progress Bar -->
-    <dimen name="car_progress_bar_height">@dimen/car_slider_height</dimen>
+    <dimen name="car_progress_bar_height">@dimen/car_seekbar_height</dimen>
 
     <!-- Text Input -->
     <dimen name="car_text_input_line_height">2dp</dimen>
@@ -174,4 +178,8 @@ limitations under the License.
 
     <!-- The margin between text is lies on top of each other. -->
     <dimen name="car_text_vertical_margin">2dp</dimen>
+
+    <!-- Speed Bump -->
+    <dimen name="speed_bump_lock_out_message_height">96dp</dimen>
+    <dimen name="speed_bump_lock_out_drawable_margin_bottom">8dp</dimen>
 </resources>

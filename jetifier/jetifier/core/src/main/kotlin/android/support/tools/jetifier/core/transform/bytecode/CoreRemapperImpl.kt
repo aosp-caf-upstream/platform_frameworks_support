@@ -17,13 +17,13 @@
 package android.support.tools.jetifier.core.transform.bytecode
 
 import android.support.tools.jetifier.core.map.TypesMap
-import android.support.tools.jetifier.core.rules.JavaField
 import android.support.tools.jetifier.core.rules.JavaType
 import android.support.tools.jetifier.core.transform.TransformationContext
-import android.support.tools.jetifier.core.transform.bytecode.asm.CustomClassRemapper
 import android.support.tools.jetifier.core.transform.bytecode.asm.CustomRemapper
 import android.support.tools.jetifier.core.utils.Log
 import org.objectweb.asm.ClassVisitor
+import org.objectweb.asm.commons.ClassRemapper
+import java.nio.file.Path
 
 /**
  * Applies mappings defined in [TypesMap] during the remapping process.
@@ -36,8 +36,8 @@ class CoreRemapperImpl(private val context: TransformationContext) : CoreRemappe
 
     private val typesMap = context.config.typesMap
 
-    fun createClassRemapper(visitor: ClassVisitor): CustomClassRemapper {
-        return CustomClassRemapper(visitor, CustomRemapper(this))
+    fun createClassRemapper(visitor: ClassVisitor): ClassRemapper {
+        return ClassRemapper(visitor, CustomRemapper(this))
     }
 
     override fun rewriteType(type: JavaType): JavaType {
@@ -56,22 +56,6 @@ class CoreRemapperImpl(private val context: TransformationContext) : CoreRemappe
         return type
     }
 
-    override fun rewriteField(field: JavaField): JavaField {
-        if (!context.isEligibleForRewrite(field.owner)) {
-            return field
-        }
-
-        val result = typesMap.fields[field]
-        if (result != null) {
-            Log.i(TAG, "  map: %s -> %s", field, result)
-            return result
-        }
-
-        context.reportNoMappingFoundFailure()
-        Log.e(TAG, "No mapping for: " + field)
-        return field
-    }
-
     override fun rewriteString(value: String): String {
         val type = JavaType.fromDotVersion(value)
         if (!context.isEligibleForRewrite(type)) {
@@ -87,5 +71,25 @@ class CoreRemapperImpl(private val context: TransformationContext) : CoreRemappe
         // We do not treat string content mismatches as errors
         return value
     }
-}
 
+    fun rewritePath(path: Path): Path {
+        if (!context.rewritingSupportLib) {
+            return path
+        }
+
+        val owner = path.toFile().path.replace('\\', '/').removeSuffix(".class")
+        val type = JavaType(owner)
+        if (!context.isEligibleForRewrite(type)) {
+            return path
+        }
+
+        val result = rewriteType(type)
+        if (result != type) {
+            return path.fileSystem.getPath(result.fullName + ".class")
+        }
+
+        context.reportNoMappingFoundFailure()
+        Log.e(TAG, "No mapping for: " + type)
+        return path
+    }
+}
