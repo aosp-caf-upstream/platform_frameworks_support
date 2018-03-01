@@ -47,15 +47,6 @@ class SupportAndroidLibraryPlugin : Plugin<Project> {
 
             library.defaultConfig.minSdkVersion(supportLibraryExtension.minSdkVersion)
 
-            if (supportLibraryExtension.legacySourceLocation) {
-                // We use a non-standard test directory structure.
-                val androidTest = library.sourceSets.getByName("androidTest")
-                androidTest.setRoot("tests")
-                androidTest.java.srcDir("tests/src")
-                androidTest.res.srcDir("tests/res")
-                androidTest.manifest.srcFile("tests/AndroidManifest.xml")
-            }
-
             // Java 8 is only fully supported on API 24+ and not all Java 8 features are binary
             // compatible with API < 24, so use Java 7 for both source AND target.
             val javaVersion: JavaVersion
@@ -129,7 +120,7 @@ class SupportAndroidLibraryPlugin : Plugin<Project> {
 
         project.afterEvaluate {
             setUpLint(library.lintOptions, SupportConfig.getLintBaseline(project),
-                    (supportLibraryExtension.mavenVersion?.isSnapshot()) ?: true)
+                    (supportLibraryExtension.mavenVersion?.isFinalApi()) ?: false)
         }
 
         project.tasks.getByName("uploadArchives").dependsOn("lintRelease")
@@ -148,7 +139,7 @@ class SupportAndroidLibraryPlugin : Plugin<Project> {
     }
 }
 
-private fun setUpLint(lintOptions: LintOptions, baseline: File, snapshotVersion: Boolean) {
+private fun setUpLint(lintOptions: LintOptions, baseline: File, verifyTranslations: Boolean) {
     // Always lint check NewApi as fatal.
     lintOptions.isAbortOnError = true
     lintOptions.isIgnoreWarnings = true
@@ -168,11 +159,10 @@ private fun setUpLint(lintOptions: LintOptions, baseline: File, snapshotVersion:
 
     lintOptions.fatal("NewApi")
 
-    if (snapshotVersion) {
-        // Do not run missing translations checks on snapshot versions of the library.
-        lintOptions.disable("MissingTranslation")
-    } else {
+    if (verifyTranslations) {
         lintOptions.fatal("MissingTranslation")
+    } else {
+        lintOptions.disable("MissingTranslation")
     }
 
     // Set baseline file for all legacy lint warnings.

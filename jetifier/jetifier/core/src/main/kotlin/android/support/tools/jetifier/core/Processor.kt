@@ -24,6 +24,7 @@ import android.support.tools.jetifier.core.transform.TransformationContext
 import android.support.tools.jetifier.core.transform.Transformer
 import android.support.tools.jetifier.core.transform.bytecode.ByteCodeTransformer
 import android.support.tools.jetifier.core.transform.metainf.MetaInfTransformer
+import android.support.tools.jetifier.core.transform.pom.PomDependency
 import android.support.tools.jetifier.core.transform.pom.PomDocument
 import android.support.tools.jetifier.core.transform.pom.PomScanner
 import android.support.tools.jetifier.core.transform.proguard.ProGuardTransformer
@@ -74,9 +75,10 @@ class Processor private constructor (
 
         /**
          * Creates a new instance of the [Processor].
-         * [config] Transformation configuration
-         * [reversedMode] Whether the processor should run in reversed mode
-         * [rewritingSupportLib] Whether we are rewriting the support library itself
+         *
+         * @param config Transformation configuration
+         * @param reversedMode Whether the processor should run in reversed mode
+         * @param rewritingSupportLib Whether we are rewriting the support library itself
          */
         fun createProcessor(
             config: Config,
@@ -90,7 +92,7 @@ class Processor private constructor (
                     restrictToPackagePrefixes = listOf(REVERSE_RESTRICT_TO_PACKAGE),
                     rewriteRules = config.rewriteRules,
                     slRules = config.slRules,
-                    pomRewriteRules = emptyList(), // TODO: This will need a new set of rules
+                    pomRewriteRules = emptySet(), // TODO: This will need a new set of rules
                     typesMap = config.typesMap.reverseMapOrDie(),
                     proGuardMap = config.proGuardMap.reverseMapOrDie(),
                     packageMap = config.packageMap.reverse()
@@ -110,17 +112,26 @@ class Processor private constructor (
 
     /**
      * Transforms the input libraries given in [inputLibraries] using all the registered
-     * [Transformer]s and returns new libraries stored in [outputPath].
+     * [Transformer]s and returns a list of replacement libraries (the newly created libraries are
+     * get stored into [outputPath]).
      *
      * Currently we have the following transformers:
      * - [ByteCodeTransformer] for java native code
      * - [XmlResourcesTransformer] for java native code
      * - [ProGuardTransformer] for PorGuard files
+     *
+     * @param outputPath Path where to save the generated library / libraries.
+     * @param outputIsDir Whether the [outputPath] represents a single file or a directory. In case
+     * of a single file, only one library can be given as input.
+     * @param copyUnmodifiedLibsAlso Whether archives that were not modified should be also copied
+     * to the given [outputPath]
+     * @return list of files (existing and generated) that should replace the given [inputLibraries]
      */
     fun transform(inputLibraries: Set<File>,
             outputPath: Path,
-            outputIsDir: Boolean
-    ): TransformationResult {
+            outputIsDir: Boolean,
+            copyUnmodifiedLibsAlso: Boolean = true
+    ): Set<File> {
         // 0) Validate arguments
         if (!outputIsDir && inputLibraries.size > 1) {
             throw IllegalArgumentException("Cannot process more than 1 library (" + inputLibraries +
@@ -148,19 +159,53 @@ class Processor private constructor (
         // 4) Transform the previously discovered POM files
         transformPomFiles(pomFiles)
 
-        // 5) Repackage the libraries back to archives
-        val outputLibraries = libraries.map {
-            if (outputIsDir) {
-                it.writeSelfToDir(outputPath)
-            } else {
-                it.writeSelfToFile(outputPath)
+        // 5) Repackage the libraries back to archive files
+        val generatedLibraries = libraries
+            .filter { copyUnmodifiedLibsAlso || it.wasChanged }
+            .map {
+                if (outputIsDir) {
+                    it.writeSelfToDir(outputPath)
+                } else {
+                    it.writeSelfToFile(outputPath)
+                }
             }
-        }.toSet()
+            .toSet()
 
-        // TODO: Filter out only the libraries that have been really changed
-        return TransformationResult(
-            filesToRemove = inputLibraries,
-            filesToAdd = outputLibraries)
+        if (copyUnmodifiedLibsAlso) {
+            return generatedLibraries
+        }
+
+        // 6) Create a set of files that should be removed (because they've been changed).
+        val filesToRemove = libraries
+            .filter { it.wasChanged }
+            .map { it.relativePath.toFile() }
+            .toSet()
+
+        return inputLibraries.minus(filesToRemove).plus(generatedLibraries)
+    }
+
+    /**
+     * Maps the given dependency (in form of groupId:artifactId:version) to a new set of
+     * dependencies. Used for mapping of old support library artifacts to jetpack ones.
+     *
+     * @return set of new dependencies. Can be empty which means the given dependency should be
+     * removed without replacement. Returns null in case a mapping was not found which means that
+     * the given artifact was unknown.
+     */
+    fun mapDependency(depNotation: String): Set<String>? {
+        val parts = depNotation.split(":")
+        val inputDependency = PomDependency(
+            groupId = parts[0],
+            artifactId = parts[1],
+            version = parts[2])
+
+        // TODO: We ignore version check for now
+        val resultRule = context.config.pomRewriteRules
+            .firstOrNull { it.matches(inputDependency) } ?: return null
+
+        return resultRule.to
+            .map { it.toStringNotation() }
+            .toSet()
     }
 
     private fun loadLibraries(inputLibraries: Iterable<File>): List<Archive> {

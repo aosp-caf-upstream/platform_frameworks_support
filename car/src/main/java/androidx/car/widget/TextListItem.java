@@ -230,9 +230,7 @@ public class TextListItem extends ListItem<TextListItem.ViewHolder> {
     }
 
     private void setOnClickListener() {
-        if (mOnClickListener != null) {
-            mBinders.add(vh -> vh.itemView.setOnClickListener(mOnClickListener));
-        }
+        mBinders.add(vh -> vh.itemView.setOnClickListener(mOnClickListener));
     }
 
     private void setPrimaryIconContent() {
@@ -343,13 +341,13 @@ public class TextListItem extends ListItem<TextListItem.ViewHolder> {
 
         if (mIsBodyPrimary) {
             mBinders.add(vh -> {
-                vh.getTitle().setTextAppearance(R.style.CarBody2);
-                vh.getBody().setTextAppearance(R.style.CarBody1);
+                vh.getTitle().setTextAppearance(R.style.TextAppearance_Car_Body2);
+                vh.getBody().setTextAppearance(R.style.TextAppearance_Car_Body1);
             });
         } else {
             mBinders.add(vh -> {
-                vh.getTitle().setTextAppearance(R.style.CarBody1);
-                vh.getBody().setTextAppearance(R.style.CarBody2);
+                vh.getTitle().setTextAppearance(R.style.TextAppearance_Car_Body1);
+                vh.getBody().setTextAppearance(R.style.TextAppearance_Car_Body2);
             });
         }
     }
