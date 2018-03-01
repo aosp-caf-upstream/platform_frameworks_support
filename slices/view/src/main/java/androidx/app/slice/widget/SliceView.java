@@ -120,6 +120,7 @@ public class SliceView extends ViewGroup implements Observer<Slice> {
      * that selection.
      */
     private static final int MODE_AUTO = 0;
+
     private int mMode = MODE_AUTO;
     private SliceChildView mCurrentView;
     private Slice mCurrentSlice;
@@ -226,6 +227,11 @@ public class SliceView extends ViewGroup implements Observer<Slice> {
      * content see {@link SliceLiveData}.
      */
     public void setSlice(@Nullable Slice slice) {
+        if (mCurrentSlice != null && slice != null
+                && !mCurrentSlice.getUri().equals(slice.getUri())) {
+            // New slice, reset view
+            mCurrentView.resetView();
+        }
         mCurrentSlice = slice;
         reinflate();
     }
@@ -321,7 +327,9 @@ public class SliceView extends ViewGroup implements Observer<Slice> {
         }
         // TODO: Smarter mapping here from one state to the next.
         int mode = getMode();
-        if (mMode == mCurrentView.getMode()) {
+        boolean isSmallGridShowing = mCurrentView instanceof GridRowView;
+        boolean isGridSlice = SliceQuery.hasHints(mCurrentSlice, HINT_HORIZONTAL);
+        if (mMode == mCurrentView.getMode() && isGridSlice == isSmallGridShowing) {
             mCurrentView.setSlice(mCurrentSlice);
         } else {
             removeAllViews();
