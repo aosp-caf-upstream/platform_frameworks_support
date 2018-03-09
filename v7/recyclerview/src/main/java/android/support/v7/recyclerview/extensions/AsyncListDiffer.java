@@ -68,7 +68,7 @@ import java.util.List;
  *         super.onCreate(savedState);
  *         MyViewModel viewModel = ViewModelProviders.of(this).get(MyViewModel.class);
  *         RecyclerView recyclerView = findViewById(R.id.user_list);
- *         UserAdapter&lt;User> adapter = new UserAdapter();
+ *         UserAdapter adapter = new UserAdapter();
  *         viewModel.usersList.observe(this, list -> adapter.submitList(list));
  *         recyclerView.setAdapter(adapter);
  *     }
@@ -198,19 +198,23 @@ public class AsyncListDiffer<T> {
         // incrementing generation means any currently-running diffs are discarded when they finish
         final int runGeneration = ++mMaxScheduledGeneration;
 
+        // fast simple remove all
         if (newList == null) {
             //noinspection ConstantConditions
-            mUpdateCallback.onRemoved(0, mList.size());
+            int countRemoved = mList.size();
             mList = null;
             mReadOnlyList = Collections.emptyList();
+            // notify last, after list is updated
+            mUpdateCallback.onRemoved(0, countRemoved);
             return;
         }
 
+        // fast simple first insert
         if (mList == null) {
-            // fast simple first insert
-            mUpdateCallback.onInserted(0, newList.size());
             mList = newList;
             mReadOnlyList = Collections.unmodifiableList(newList);
+            // notify last, after list is updated
+            mUpdateCallback.onInserted(0, newList.size());
             return;
         }
 
@@ -231,14 +235,45 @@ public class AsyncListDiffer<T> {
 
                     @Override
                     public boolean areItemsTheSame(int oldItemPosition, int newItemPosition) {
-                        return mConfig.getDiffCallback().areItemsTheSame(
-                                oldList.get(oldItemPosition), newList.get(newItemPosition));
+                        T oldItem = oldList.get(oldItemPosition);
+                        T newItem = newList.get(newItemPosition);
+                        if (oldItem != null && newItem != null) {
+                            return mConfig.getDiffCallback().areItemsTheSame(oldItem, newItem);
+                        }
+                        // If both items are null we consider them the same.
+                        return oldItem == null && newItem == null;
                     }
 
                     @Override
                     public boolean areContentsTheSame(int oldItemPosition, int newItemPosition) {
-                        return mConfig.getDiffCallback().areContentsTheSame(
-                                oldList.get(oldItemPosition), newList.get(newItemPosition));
+                        T oldItem = oldList.get(oldItemPosition);
+                        T newItem = newList.get(newItemPosition);
+                        if (oldItem != null && newItem != null) {
+                            return mConfig.getDiffCallback().areContentsTheSame(oldItem, newItem);
+                        }
+                        if (oldItem == null && newItem == null) {
+                            return true;
+                        }
+                        // There is an implementation bug if we reach this point. Per the docs, this
+                        // method should only be invoked when areItemsTheSame returns true. That
+                        // only occurs when both items are non-null or both are null and both of
+                        // those cases are handled above.
+                        throw new AssertionError();
+                    }
+
+                    @Nullable
+                    @Override
+                    public Object getChangePayload(int oldItemPosition, int newItemPosition) {
+                        T oldItem = oldList.get(oldItemPosition);
+                        T newItem = newList.get(newItemPosition);
+                        if (oldItem != null && newItem != null) {
+                            return mConfig.getDiffCallback().getChangePayload(oldItem, newItem);
+                        }
+                        // There is an implementation bug if we reach this point. Per the docs, this
+                        // method should only be invoked when areItemsTheSame returns true AND
+                        // areContentsTheSame returns false. That only occurs when both items are
+                        // non-null which is the only case handled above.
+                        throw new AssertionError();
                     }
                 });
 
@@ -255,8 +290,9 @@ public class AsyncListDiffer<T> {
     }
 
     private void latchList(@NonNull List<T> newList, @NonNull DiffUtil.DiffResult diffResult) {
-        diffResult.dispatchUpdatesTo(mUpdateCallback);
         mList = newList;
+        // notify last, after list is updated
         mReadOnlyList = Collections.unmodifiableList(newList);
+        diffResult.dispatchUpdatesTo(mUpdateCallback);
     }
 }

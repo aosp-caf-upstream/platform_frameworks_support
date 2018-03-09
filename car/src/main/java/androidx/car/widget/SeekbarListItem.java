@@ -272,7 +272,7 @@ public class SeekbarListItem extends ListItem<SeekbarListItem.ViewHolder> {
             if (!TextUtils.isEmpty(mText)) {
                 vh.getText().setVisibility(View.VISIBLE);
                 vh.getText().setText(mText);
-                vh.getText().setTextAppearance(R.style.TextAppearance_Car_Body1);
+                vh.getText().setTextAppearance(getTitleTextAppearance());
             }
         });
     }
@@ -520,7 +520,7 @@ public class SeekbarListItem extends ListItem<SeekbarListItem.ViewHolder> {
         }
 
         @Override
-        public void complyWithUxRestrictions(CarUxRestrictions restrictions) {
+        void complyWithUxRestrictions(CarUxRestrictions restrictions) {
             CarUxRestrictionsUtils.comply(itemView.getContext(), restrictions, getText());
         }
 

@@ -49,11 +49,11 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
-import androidx.app.slice.Slice;
-import androidx.app.slice.SliceItem;
-import androidx.app.slice.widget.EventInfo;
-import androidx.app.slice.widget.SliceLiveData;
-import androidx.app.slice.widget.SliceView;
+import androidx.slice.Slice;
+import androidx.slice.SliceItem;
+import androidx.slice.widget.EventInfo;
+import androidx.slice.widget.SliceLiveData;
+import androidx.slice.widget.SliceView;
 
 /**
  * Example use of SliceView. Uses a search bar to select/auto-complete a slice uri which is
@@ -67,6 +67,7 @@ public class SliceBrowser extends AppCompatActivity implements SliceView.OnSlice
     private static final String SLICE_METADATA_KEY = "android.metadata.SLICE_URI";
     private static final boolean TEST_INTENT = false;
     private static final boolean TEST_THEMES = false;
+    private static final boolean SCROLLING_ENABLED = true;
 
     private ArrayList<Uri> mSliceUris = new ArrayList<Uri>();
     private int mSelectedMode;
@@ -90,7 +91,7 @@ public class SliceBrowser extends AppCompatActivity implements SliceView.OnSlice
 
         final String[] from = new String[]{"uri"};
         final int[] to = new int[]{android.R.id.text1};
-        mAdapter = new SimpleCursorAdapter(this, android.R.layout.simple_list_item_1,
+        mAdapter = new SimpleCursorAdapter(this, R.layout.simple_list_item_1,
                 null, from, to, CursorAdapter.FLAG_REGISTER_CONTENT_OBSERVER);
         mSearchView.setSuggestionsAdapter(mAdapter);
         mSearchView.setIconifiedByDefault(false);
@@ -289,6 +290,7 @@ public class SliceBrowser extends AppCompatActivity implements SliceView.OnSlice
         if (mSliceLiveData != null) {
             mSliceLiveData.removeObservers(this);
         }
+        v.setScrollable(SCROLLING_ENABLED);
         return v;
     }
 }
