@@ -16,9 +16,6 @@
 
 package androidx.app.slice.widget;
 
-import static android.app.slice.Slice.HINT_PARTIAL;
-import static android.view.ViewGroup.LayoutParams.WRAP_CONTENT;
-
 import android.annotation.TargetApi;
 import android.content.Context;
 import android.support.annotation.RestrictTo;
@@ -26,9 +23,10 @@ import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.AttributeSet;
 
+import java.util.List;
+
 import androidx.app.slice.Slice;
-import androidx.app.slice.core.SliceQuery;
-import androidx.app.slice.view.R;
+import androidx.app.slice.SliceItem;
 
 /**
  * @hide
@@ -39,9 +37,9 @@ public class LargeTemplateView extends SliceChildView {
 
     private final LargeSliceAdapter mAdapter;
     private final RecyclerView mRecyclerView;
-    private final int mDefaultHeight;
     private Slice mSlice;
     private boolean mIsScrollable;
+    private ListContent mListContent;
 
     public LargeTemplateView(Context context) {
         super(context);
@@ -50,7 +48,11 @@ public class LargeTemplateView extends SliceChildView {
         mAdapter = new LargeSliceAdapter(context);
         mRecyclerView.setAdapter(mAdapter);
         addView(mRecyclerView);
-        mDefaultHeight = getResources().getDimensionPixelSize(R.dimen.abc_slice_large_height);
+    }
+
+    @Override
+    public int getActualHeight() {
+        return mListContent != null ? mListContent.getListHeight() : 0;
     }
 
     @Override
@@ -73,17 +75,8 @@ public class LargeTemplateView extends SliceChildView {
     }
 
     @Override
-    protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-        mRecyclerView.getLayoutParams().height = WRAP_CONTENT;
-        super.onMeasure(widthMeasureSpec, heightMeasureSpec);
-        int width = MeasureSpec.getSize(widthMeasureSpec);
-        if (mRecyclerView.getMeasuredHeight() > width
-                || (mSlice != null && SliceQuery.hasHints(mSlice, HINT_PARTIAL))) {
-            mRecyclerView.getLayoutParams().height = width;
-        } else {
-            mRecyclerView.getLayoutParams().height = mRecyclerView.getMeasuredHeight();
-        }
-        super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+    public void setSliceActions(List<SliceItem> actions) {
+        mAdapter.setSliceActions(actions);
     }
 
     @Override
@@ -102,8 +95,8 @@ public class LargeTemplateView extends SliceChildView {
         if (mSlice == null) {
             return;
         }
-        ListContent lc = new ListContent(mSlice);
-        mAdapter.setSliceItems(lc.getRowItems(), mTintColor);
+        mListContent = new ListContent(getContext(), mSlice);
+        mAdapter.setSliceItems(mListContent.getRowItems(), mTintColor);
     }
 
     /**
@@ -118,5 +111,6 @@ public class LargeTemplateView extends SliceChildView {
     public void resetView() {
         mSlice = null;
         mAdapter.setSliceItems(null, -1);
+        mListContent = null;
     }
 }

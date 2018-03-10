@@ -18,11 +18,11 @@ package android.support.v4.text.util;
 
 import static android.support.annotation.RestrictTo.Scope.LIBRARY_GROUP;
 
-import android.os.Build;
 import android.support.annotation.IntDef;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.annotation.RestrictTo;
+import android.support.v4.os.BuildCompat;
 import android.support.v4.util.PatternsCompat;
 import android.text.Spannable;
 import android.text.SpannableString;
@@ -97,7 +97,7 @@ public final class LinkifyCompat {
      *  @return True if at least one link is found and applied.
      */
     public static boolean addLinks(@NonNull Spannable text, @LinkifyMask int mask) {
-        if (Build.VERSION.SDK_INT >= 27) {
+        if (shouldAddLinksFallbackToFramework()) {
             return Linkify.addLinks(text, mask);
         }
         if (mask == 0) {
@@ -110,13 +110,11 @@ public final class LinkifyCompat {
             text.removeSpan(old[i]);
         }
 
-        // Use framework to linkify phone numbers.
-        boolean frameworkReturn = false;
         if ((mask & Linkify.PHONE_NUMBERS) != 0) {
-            frameworkReturn = Linkify.addLinks(text, Linkify.PHONE_NUMBERS);
+            Linkify.addLinks(text, Linkify.PHONE_NUMBERS);
         }
 
-        ArrayList<LinkSpec> links = new ArrayList<LinkSpec>();
+        final ArrayList<LinkSpec> links = new ArrayList<>();
 
         if ((mask & Linkify.WEB_URLS) != 0) {
             gatherLinks(links, text, PatternsCompat.AUTOLINK_WEB_URL,
@@ -161,7 +159,7 @@ public final class LinkifyCompat {
      *  @return True if at least one link is found and applied.
      */
     public static boolean addLinks(@NonNull TextView text, @LinkifyMask int mask) {
-        if (Build.VERSION.SDK_INT >= 26) {
+        if (shouldAddLinksFallbackToFramework()) {
             return Linkify.addLinks(text, mask);
         }
         if (mask == 0) {
@@ -204,7 +202,7 @@ public final class LinkifyCompat {
      */
     public static void addLinks(@NonNull TextView text, @NonNull Pattern pattern,
             @Nullable String scheme) {
-        if (Build.VERSION.SDK_INT >= 26) {
+        if (shouldAddLinksFallbackToFramework()) {
             Linkify.addLinks(text, pattern, scheme);
             return;
         }
@@ -228,7 +226,7 @@ public final class LinkifyCompat {
     public static void addLinks(@NonNull TextView text, @NonNull Pattern pattern,
             @Nullable String scheme, @Nullable MatchFilter matchFilter,
             @Nullable TransformFilter transformFilter) {
-        if (Build.VERSION.SDK_INT >= 26) {
+        if (shouldAddLinksFallbackToFramework()) {
             Linkify.addLinks(text, pattern, scheme, matchFilter, transformFilter);
             return;
         }
@@ -255,7 +253,7 @@ public final class LinkifyCompat {
     public static void addLinks(@NonNull TextView text, @NonNull Pattern pattern,
             @Nullable String defaultScheme, @Nullable String[] schemes,
             @Nullable MatchFilter matchFilter, @Nullable TransformFilter transformFilter) {
-        if (Build.VERSION.SDK_INT >= 26) {
+        if (shouldAddLinksFallbackToFramework()) {
             Linkify.addLinks(text, pattern, defaultScheme, schemes, matchFilter, transformFilter);
             return;
         }
@@ -280,7 +278,7 @@ public final class LinkifyCompat {
      */
     public static boolean addLinks(@NonNull Spannable text, @NonNull Pattern pattern,
             @Nullable String scheme) {
-        if (Build.VERSION.SDK_INT >= 26) {
+        if (shouldAddLinksFallbackToFramework()) {
             return Linkify.addLinks(text, pattern, scheme);
         }
         return addLinks(text, pattern, scheme, null, null, null);
@@ -304,7 +302,7 @@ public final class LinkifyCompat {
     public static boolean addLinks(@NonNull Spannable spannable, @NonNull Pattern pattern,
             @Nullable String scheme, @Nullable MatchFilter matchFilter,
             @Nullable TransformFilter transformFilter) {
-        if (Build.VERSION.SDK_INT >= 26) {
+        if (shouldAddLinksFallbackToFramework()) {
             return Linkify.addLinks(spannable, pattern, scheme, matchFilter, transformFilter);
         }
         return addLinks(spannable, pattern, scheme, null, matchFilter,
@@ -330,7 +328,7 @@ public final class LinkifyCompat {
     public static boolean addLinks(@NonNull Spannable spannable, @NonNull Pattern pattern,
             @Nullable  String defaultScheme, @Nullable String[] schemes,
             @Nullable MatchFilter matchFilter, @Nullable TransformFilter transformFilter) {
-        if (Build.VERSION.SDK_INT >= 26) {
+        if (shouldAddLinksFallbackToFramework()) {
             return Linkify.addLinks(spannable, pattern, defaultScheme, schemes, matchFilter,
                     transformFilter);
         }
@@ -368,6 +366,10 @@ public final class LinkifyCompat {
         }
 
         return hasMatches;
+    }
+
+    private static boolean shouldAddLinksFallbackToFramework() {
+        return BuildCompat.isAtLeastP();
     }
 
     private static void addLinkMovementMethod(@NonNull TextView t) {
@@ -442,7 +444,7 @@ public final class LinkifyCompat {
         int base = 0;
 
         try {
-            while ((address = WebView.findAddress(string)) != null) {
+            while ((address = findAddress(string)) != null) {
                 int start = string.indexOf(address);
 
                 if (start < 0) {
@@ -475,6 +477,13 @@ public final class LinkifyCompat {
             // in WebView.findAddress.
             return;
         }
+    }
+
+    private static String findAddress(String addr) {
+        if (BuildCompat.isAtLeastP()) {
+            return WebView.findAddress(addr);
+        }
+        return FindAddress.findAddress(addr);
     }
 
     private static void pruneOverlaps(ArrayList<LinkSpec> links, Spannable text) {

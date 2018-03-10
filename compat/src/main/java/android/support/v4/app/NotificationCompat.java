@@ -17,6 +17,7 @@
 package android.support.v4.app;
 
 import static android.support.annotation.RestrictTo.Scope.LIBRARY_GROUP;
+
 import static java.lang.annotation.RetentionPolicy.SOURCE;
 
 import android.app.Activity;
@@ -2884,6 +2885,11 @@ public class NotificationCompat {
          */
         public static final int SEMANTIC_ACTION_THUMBS_DOWN = 9;
 
+        /**
+         * {@link SemanticAction}: Call a contact, group, etc.
+         */
+        public static final int SEMANTIC_ACTION_CALL = 10;
+
         static final String EXTRA_SHOWS_USER_INTERFACE =
                 "android.support.action.showsUserInterface";
 
@@ -3319,6 +3325,7 @@ public class NotificationCompat {
              * @param label the label to display while the action is being prepared to execute
              * @return this object for method chaining
              */
+            @Deprecated
             public WearableExtender setInProgressLabel(CharSequence label) {
                 mInProgressLabel = label;
                 return this;
@@ -3330,6 +3337,7 @@ public class NotificationCompat {
              *
              * @return the label to display while the action is being prepared to execute
              */
+            @Deprecated
             public CharSequence getInProgressLabel() {
                 return mInProgressLabel;
             }
@@ -3341,6 +3349,7 @@ public class NotificationCompat {
              * @param label the label to confirm the action should be executed
              * @return this object for method chaining
              */
+            @Deprecated
             public WearableExtender setConfirmLabel(CharSequence label) {
                 mConfirmLabel = label;
                 return this;
@@ -3352,6 +3361,7 @@ public class NotificationCompat {
              *
              * @return the label to confirm the action should be executed
              */
+            @Deprecated
             public CharSequence getConfirmLabel() {
                 return mConfirmLabel;
             }
@@ -3363,6 +3373,7 @@ public class NotificationCompat {
              * @param label the label to display to cancel the action
              * @return this object for method chaining
              */
+            @Deprecated
             public WearableExtender setCancelLabel(CharSequence label) {
                 mCancelLabel = label;
                 return this;
@@ -3374,6 +3385,7 @@ public class NotificationCompat {
              *
              * @return the label to display to cancel the action
              */
+            @Deprecated
             public CharSequence getCancelLabel() {
                 return mCancelLabel;
             }
@@ -3446,7 +3458,8 @@ public class NotificationCompat {
                 SEMANTIC_ACTION_MUTE,
                 SEMANTIC_ACTION_UNMUTE,
                 SEMANTIC_ACTION_THUMBS_UP,
-                SEMANTIC_ACTION_THUMBS_DOWN
+                SEMANTIC_ACTION_THUMBS_DOWN,
+                SEMANTIC_ACTION_CALL
         })
         @Retention(RetentionPolicy.SOURCE)
         public @interface SemanticAction {}
@@ -3967,6 +3980,7 @@ public class NotificationCompat {
         /**
          * Set an icon that goes with the content of this notification.
          */
+        @Deprecated
         public WearableExtender setContentIcon(int icon) {
             mContentIcon = icon;
             return this;
@@ -3975,6 +3989,7 @@ public class NotificationCompat {
         /**
          * Get an icon that goes with the content of this notification.
          */
+        @Deprecated
         public int getContentIcon() {
             return mContentIcon;
         }
@@ -3985,6 +4000,7 @@ public class NotificationCompat {
          * {@link android.view.Gravity#END}. The default value is {@link android.view.Gravity#END}.
          * @see #setContentIcon
          */
+        @Deprecated
         public WearableExtender setContentIconGravity(int contentIconGravity) {
             mContentIconGravity = contentIconGravity;
             return this;
@@ -3996,6 +4012,7 @@ public class NotificationCompat {
          * {@link android.view.Gravity#END}. The default value is {@link android.view.Gravity#END}.
          * @see #getContentIcon
          */
+        @Deprecated
         public int getContentIconGravity() {
             return mContentIconGravity;
         }
@@ -4043,6 +4060,7 @@ public class NotificationCompat {
          * {@link android.view.Gravity#CENTER_VERTICAL} and {@link android.view.Gravity#BOTTOM}.
          * The default value is {@link android.view.Gravity#BOTTOM}.
          */
+        @Deprecated
         public WearableExtender setGravity(int gravity) {
             mGravity = gravity;
             return this;
@@ -4054,6 +4072,7 @@ public class NotificationCompat {
          * {@link android.view.Gravity#CENTER_VERTICAL} and {@link android.view.Gravity#BOTTOM}.
          * The default value is {@link android.view.Gravity#BOTTOM}.
          */
+        @Deprecated
         public int getGravity() {
             return mGravity;
         }
@@ -4067,6 +4086,7 @@ public class NotificationCompat {
          * documentation for the preset in question. See also
          * {@link #setCustomContentHeight} and {@link #getCustomSizePreset}.
          */
+        @Deprecated
         public WearableExtender setCustomSizePreset(int sizePreset) {
             mCustomSizePreset = sizePreset;
             return this;
@@ -4080,6 +4100,7 @@ public class NotificationCompat {
          * using {@link #setDisplayIntent}. Check the documentation for the preset in question.
          * See also {@link #setCustomContentHeight} and {@link #setCustomSizePreset}.
          */
+        @Deprecated
         public int getCustomSizePreset() {
             return mCustomSizePreset;
         }
@@ -4091,6 +4112,7 @@ public class NotificationCompat {
          * {@link NotificationCompat.WearableExtender#setCustomSizePreset} and
          * {@link #getCustomContentHeight}.
          */
+        @Deprecated
         public WearableExtender setCustomContentHeight(int height) {
             mCustomContentHeight = height;
             return this;
@@ -4102,6 +4124,7 @@ public class NotificationCompat {
          * using {@link #setDisplayIntent}. See also {@link #setCustomSizePreset} and
          * {@link #setCustomContentHeight}.
          */
+        @Deprecated
         public int getCustomContentHeight() {
             return mCustomContentHeight;
         }
@@ -4152,6 +4175,7 @@ public class NotificationCompat {
          * @param hintHideIcon {@code true} to hide the icon, {@code false} otherwise.
          * @return this object for method chaining
          */
+        @Deprecated
         public WearableExtender setHintHideIcon(boolean hintHideIcon) {
             setFlag(FLAG_HINT_HIDE_ICON, hintHideIcon);
             return this;
@@ -4162,6 +4186,7 @@ public class NotificationCompat {
          * @return {@code true} if this icon should not be displayed, false otherwise.
          * The default value is {@code false} if this was never set.
          */
+        @Deprecated
         public boolean getHintHideIcon() {
             return (mFlags & FLAG_HINT_HIDE_ICON) != 0;
         }
@@ -4171,6 +4196,7 @@ public class NotificationCompat {
          * displayed, and other semantic content should be hidden. This hint is only applicable
          * to sub-pages added using {@link #addPage}.
          */
+        @Deprecated
         public WearableExtender setHintShowBackgroundOnly(boolean hintShowBackgroundOnly) {
             setFlag(FLAG_HINT_SHOW_BACKGROUND_ONLY, hintShowBackgroundOnly);
             return this;
@@ -4181,6 +4207,7 @@ public class NotificationCompat {
          * displayed, and other semantic content should be hidden. This hint is only applicable
          * to sub-pages added using {@link NotificationCompat.WearableExtender#addPage}.
          */
+        @Deprecated
         public boolean getHintShowBackgroundOnly() {
             return (mFlags & FLAG_HINT_SHOW_BACKGROUND_ONLY) != 0;
         }
@@ -4192,6 +4219,7 @@ public class NotificationCompat {
          * @param hintAvoidBackgroundClipping {@code true} to avoid clipping if possible.
          * @return this object for method chaining
          */
+        @Deprecated
         public WearableExtender setHintAvoidBackgroundClipping(
                 boolean hintAvoidBackgroundClipping) {
             setFlag(FLAG_HINT_AVOID_BACKGROUND_CLIPPING, hintAvoidBackgroundClipping);
@@ -4205,6 +4233,7 @@ public class NotificationCompat {
          * @return {@code true} if it's ok if the background is clipped on the screen, false
          * otherwise. The default value is {@code false} if this was never set.
          */
+        @Deprecated
         public boolean getHintAvoidBackgroundClipping() {
             return (mFlags & FLAG_HINT_AVOID_BACKGROUND_CLIPPING) != 0;
         }
@@ -4216,6 +4245,7 @@ public class NotificationCompat {
          *     {@link #SCREEN_TIMEOUT_SHORT} or {@link #SCREEN_TIMEOUT_LONG}.
          * @return this object for method chaining
          */
+        @Deprecated
         public WearableExtender setHintScreenTimeout(int timeout) {
             mHintScreenTimeout = timeout;
             return this;
@@ -4227,6 +4257,7 @@ public class NotificationCompat {
          * @return the duration in milliseconds if > 0, or either one of the sentinel values
          *     {@link #SCREEN_TIMEOUT_SHORT} or {@link #SCREEN_TIMEOUT_LONG}.
          */
+        @Deprecated
         public int getHintScreenTimeout() {
             return mHintScreenTimeout;
         }

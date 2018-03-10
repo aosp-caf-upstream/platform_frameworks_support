@@ -19,18 +19,20 @@ package android.support.dependencies
 const val AUTO_COMMON = "com.google.auto:auto-common:0.6"
 const val ANTLR = "org.antlr:antlr4:4.5.3"
 const val APACHE_COMMONS_CODEC = "commons-codec:commons-codec:1.10"
-const val CONSTRAINT_LAYOUT = "com.android.support.constraint:constraint-layout:1.0.2"
+const val CONSTRAINT_LAYOUT = "com.android.support.constraint:constraint-layout:1.0.2@aar"
 const val DEXMAKER_MOCKITO = "com.linkedin.dexmaker:dexmaker-mockito:2.2.0"
 const val ESPRESSO_CONTRIB = "com.android.support.test.espresso:espresso-contrib:3.0.1"
 const val ESPRESSO_CORE = "com.android.support.test.espresso:espresso-core:3.0.1"
 const val GOOGLE_COMPILE_TESTING = "com.google.testing.compile:compile-testing:0.11"
 const val GSON = "com.google.code.gson:gson:2.8.0"
-const val GUAVA = "com.google.guava:guava:23.6-android"
+const val GUAVA = "com.google.guava:guava:21.0"
+const val GUAVA_ANDROID = "com.google.guava:guava:23.6-android"
 const val INTELLIJ_ANNOTATIONS = "com.intellij:annotations:12.0"
 const val JAVAPOET = "com.squareup:javapoet:1.8.0"
 const val JSR250 = "javax.annotation:javax.annotation-api:1.2"
 const val JUNIT = "junit:junit:4.12"
-const val KOTLIN_STDLIB = "org.jetbrains.kotlin:kotlin-stdlib:1.2.0"
+const val KOTLIN_STDLIB = "org.jetbrains.kotlin:kotlin-stdlib:1.2.20"
+const val KOTLIN_METADATA = "me.eugeniomarletti:kotlin-metadata:1.2.1"
 const val LINT = "com.android.tools.lint:lint:26.0.0"
 const val MOCKITO_CORE = "org.mockito:mockito-core:2.7.6"
 const val MULTIDEX = "com.android.support:multidex:1.0.1"
@@ -48,6 +50,12 @@ const val XERIAL = "org.xerial:sqlite-jdbc:3.20.1"
 
 // Support library dependencies needed for projects that compile against prebuilt versions
 // instead of source directly.
+// NOTE: _27 versions exist for modules that have opted-in to 27, and tests that depend on those
+// modules. Other projects may stick to older versions to avoid forcing users to update.
+private const val SUPPORT_VERSION_27 = "27.1.0"
+const val SUPPORT_RECYCLERVIEW_27 = "com.android.support:recyclerview-v7:$SUPPORT_VERSION_27"
+const val SUPPORT_APPCOMPAT_27 = "com.android.support:appcompat-v7:$SUPPORT_VERSION_27"
+
 private const val SUPPORT_VERSION = "26.1.0"
 const val SUPPORT_ANNOTATIONS = "com.android.support:support-annotations:$SUPPORT_VERSION"
 const val SUPPORT_APPCOMPAT = "com.android.support:appcompat-v7:$SUPPORT_VERSION"

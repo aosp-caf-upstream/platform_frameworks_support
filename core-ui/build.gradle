@@ -9,7 +9,16 @@ plugins {
 dependencies {
     api(project(":support-annotations"))
     api(project(":support-compat"))
-    api project(':support-core-utils')
+    api(project(":support-core-utils"))
+    api(project(":customview"))
+    api(project(":viewpager"))
+    api(project(":coordinatorlayout"))
+    api(project(":drawerlayout"))
+    api(project(":slidingpanelayout"))
+    api(project(":interpolator"))
+    api(project(":swiperefreshlayout"))
+    api(project(":asynclayoutinflater"))
+    api(project(":cursoradapter"))
 
     androidTestImplementation(TEST_RUNNER)
     androidTestImplementation(ESPRESSO_CORE)
@@ -22,18 +31,6 @@ dependencies {
     testImplementation(JUNIT)
 }
 
-android {
-    sourceSets {
-        main.res.srcDirs = [
-                'res',
-                'res-public'
-        ]
-    }
-    buildTypes.all {
-        consumerProguardFiles 'proguard-rules.pro'
-    }
-}
-
 supportLibrary {
     name = "Android Support Library core UI"
     publish = true
@@ -41,5 +38,4 @@ supportLibrary {
     mavenGroup = LibraryGroups.SUPPORT
     inceptionYear = "2011"
     description = "The Support Library is a static library that you can add to your Android application in order to use APIs that are either not available for older platform versions or utility APIs that aren't a part of the framework APIs. Compatible on devices running API 14 or later."
-    legacySourceLocation = true
 }

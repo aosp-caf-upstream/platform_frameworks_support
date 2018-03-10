@@ -34,11 +34,13 @@ limitations under the License.
     <dimen name="car_keyline_1_keyline_3_diff">88dp</dimen>
 
     <!-- Paddings -->
-    <dimen name="car_padding_1">4dp</dimen>
-    <dimen name="car_padding_2">10dp</dimen>
+    <dimen name="car_padding_0">4dp</dimen>
+    <dimen name="car_padding_1">10dp</dimen>
+    <dimen name="car_padding_2">12dp</dimen>
     <dimen name="car_padding_3">16dp</dimen>
-    <dimen name="car_padding_4">28dp</dimen>
-    <dimen name="car_padding_5">32dp</dimen>
+    <dimen name="car_padding_4">20dp</dimen>
+    <dimen name="car_padding_5">40dp</dimen>
+    <dimen name="car_padding_6">64dp</dimen>
 
     <!-- Radii -->
     <dimen name="car_radius_1">4dp</dimen>
@@ -51,7 +53,7 @@ limitations under the License.
     <dimen name="car_title_size">32sp</dimen>
     <dimen name="car_title2_size">32sp</dimen>
     <dimen name="car_headline1_size">45sp</dimen>
-    <dimen name="car_headline2_size">36sp</dimen>
+    <dimen name="car_headline2_size">32sp</dimen>
     <dimen name="car_headline3_size">24sp</dimen>
     <dimen name="car_headline4_size">20sp</dimen>
     <dimen name="car_body1_size">32sp</dimen>
@@ -59,6 +61,7 @@ limitations under the License.
     <dimen name="car_body3_size">16sp</dimen>
     <dimen name="car_body4_size">14sp</dimen>
     <dimen name="car_body5_size">18sp</dimen>
+    <dimen name="car_label1_size">26sp</dimen>
     <dimen name="car_action1_size">26sp</dimen>
 
     <!-- Icons and Buttons -->
@@ -103,6 +106,7 @@ limitations under the License.
     <!-- Dialogs -->
     <dimen name="car_dialog_header_height">@dimen/car_card_header_height</dimen>
     <dimen name="car_dialog_action_bar_height">@dimen/car_card_action_bar_height</dimen>
+    <dimen name="car_dialog_elevation">16dp</dimen>
 
     <!-- Slide Up Menu -->
     <dimen name="car_slide_up_menu_initial_height">76dp</dimen>
@@ -122,7 +126,7 @@ limitations under the License.
     <dimen name="car_scroll_bar_padding">@dimen/car_padding_2</dimen>
 
     <!-- Scroll Bar Thumb -->
-    <dimen name="car_scroll_bar_thumb_width">@dimen/car_seekbar_height</dimen>
+    <dimen name="car_scroll_bar_thumb_width">6dp</dimen>
     <dimen name="car_scroll_bar_thumb_margin">@dimen/car_padding_1</dimen>
 
     <!-- Scroll Bar and Alpha Jump Buttons -->

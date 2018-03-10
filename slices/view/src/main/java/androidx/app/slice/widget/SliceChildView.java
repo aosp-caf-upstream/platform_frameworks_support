@@ -25,6 +25,8 @@ import android.util.AttributeSet;
 import android.view.View;
 import android.widget.FrameLayout;
 
+import java.util.List;
+
 import androidx.app.slice.Slice;
 import androidx.app.slice.SliceItem;
 import androidx.app.slice.view.R;
@@ -37,6 +39,7 @@ import androidx.app.slice.view.R;
 public abstract class SliceChildView extends FrameLayout {
 
     protected SliceView.OnSliceActionListener mObserver;
+    protected int mMode;
     protected int mTintColor = -1;
     protected int mTitleColor;
     protected int mSubtitleColor;
@@ -55,10 +58,35 @@ public abstract class SliceChildView extends FrameLayout {
         this(context);
     }
 
+
+    /**
+     * Set the mode of the slice being presented.
+     */
+    public void setMode(int mode) {
+        mMode = mode;
+    }
+
     /**
      * @return the mode of the slice being presented.
      */
-    public abstract int getMode();
+    @SliceView.SliceMode
+    public int getMode() {
+        return mMode;
+    }
+
+    /**
+     * @return the height of this view when displayed in {@link SliceView#MODE_SMALL}.
+     */
+    public int getSmallHeight() {
+        return 0;
+    }
+
+    /**
+     * @return the height of this view if it displayed all of its contents.
+     */
+    public int getActualHeight() {
+        return 0;
+    }
 
     /**
      * @param slice the slice to show in this view.
@@ -122,6 +150,13 @@ public abstract class SliceChildView extends FrameLayout {
      */
     public void setSliceItem(SliceItem slice, boolean isHeader, int rowIndex,
             SliceView.OnSliceActionListener observer) {
+        // Do nothing
+    }
+
+    /**
+     * Sets the slice actions for this view.
+     */
+    public void setSliceActions(List<SliceItem> actions) {
         // Do nothing
     }
 }
