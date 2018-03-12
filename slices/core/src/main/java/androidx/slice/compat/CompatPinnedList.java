@@ -20,15 +20,15 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.SystemClock;
-import android.support.annotation.RestrictTo;
-import android.support.annotation.VisibleForTesting;
-import android.support.v4.util.ArraySet;
+import androidx.annotation.RestrictTo;
+import androidx.annotation.VisibleForTesting;
+import androidx.collection.ArraySet;
+import androidx.core.util.ObjectsCompat;
 import android.text.TextUtils;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 
 import androidx.slice.SliceSpec;
@@ -170,7 +170,7 @@ public class CompatPinnedList {
 
     private static SliceSpec findSpec(List<SliceSpec> specs, String type) {
         for (SliceSpec spec : specs) {
-            if (Objects.equals(spec.getType(), type)) {
+            if (ObjectsCompat.equals(spec.getType(), type)) {
                 return spec;
             }
         }

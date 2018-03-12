@@ -17,7 +17,6 @@
 package androidx.slice.widget;
 
 import android.animation.Animator;
-import android.annotation.TargetApi;
 import android.app.PendingIntent;
 import android.app.RemoteInput;
 import android.content.Context;
@@ -25,7 +24,8 @@ import android.content.Intent;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
-import android.support.annotation.RestrictTo;
+import androidx.annotation.RestrictTo;
+import androidx.core.content.ContextCompat;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.AttributeSet;
@@ -57,7 +57,6 @@ import androidx.slice.view.R;
  */
 // TODO this should be unified with SystemUI RemoteInputView (b/67527720)
 @RestrictTo(RestrictTo.Scope.LIBRARY)
-@TargetApi(23)
 public class RemoteInputView extends LinearLayout implements View.OnClickListener, TextWatcher {
 
     private static final String TAG = "RemoteInput";
@@ -366,7 +365,7 @@ public class RemoteInputView extends LinearLayout implements View.OnClickListene
             final InputConnection inputConnection = super.onCreateInputConnection(outAttrs);
 
             if (mShowImeOnInputConnection && inputConnection != null) {
-                final InputMethodManager imm = getContext().getSystemService(
+                final InputMethodManager imm = ContextCompat.getSystemService(getContext(),
                         InputMethodManager.class);
                 if (imm != null) {
                     // onCreateInputConnection is called by InputMethodManager in the middle of

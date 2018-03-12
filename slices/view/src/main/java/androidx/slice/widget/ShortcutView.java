@@ -17,16 +17,16 @@
 package androidx.slice.widget;
 
 import static android.app.slice.Slice.HINT_LARGE;
+import static android.app.slice.Slice.HINT_NO_TINT;
 import static android.app.slice.Slice.HINT_TITLE;
 import static android.app.slice.Slice.SUBTYPE_COLOR;
-import static android.app.slice.Slice.SUBTYPE_SOURCE;
 import static android.app.slice.SliceItem.FORMAT_ACTION;
 import static android.app.slice.SliceItem.FORMAT_IMAGE;
 import static android.app.slice.SliceItem.FORMAT_INT;
 import static android.app.slice.SliceItem.FORMAT_SLICE;
 import static android.app.slice.SliceItem.FORMAT_TEXT;
 
-import android.annotation.TargetApi;
+import android.annotation.SuppressLint;
 import android.app.PendingIntent;
 import android.app.PendingIntent.CanceledException;
 import android.content.Context;
@@ -39,7 +39,7 @@ import android.graphics.drawable.Drawable;
 import android.graphics.drawable.ShapeDrawable;
 import android.graphics.drawable.shapes.OvalShape;
 import android.net.Uri;
-import android.support.annotation.RestrictTo;
+import androidx.annotation.RestrictTo;
 import android.widget.ImageView;
 
 import androidx.slice.Slice;
@@ -51,7 +51,6 @@ import androidx.slice.view.R;
  * @hide
  */
 @RestrictTo(RestrictTo.Scope.LIBRARY)
-@TargetApi(23)
 public class ShortcutView extends SliceChildView {
 
     private static final String TAG = "ShortcutView";
@@ -72,6 +71,7 @@ public class ShortcutView extends SliceChildView {
         mLargeIconSize = res.getDimensionPixelSize(R.dimen.abc_slice_shortcut_size);
     }
 
+    @SuppressLint("NewApi") // mIcon can only be non-null on API 23+
     @Override
     public void setSlice(Slice slice) {
         resetView();
@@ -87,14 +87,16 @@ public class ShortcutView extends SliceChildView {
         ShapeDrawable circle = new ShapeDrawable(new OvalShape());
         circle.setTint(color);
         ImageView iv = new ImageView(getContext());
-        iv.setBackground(circle);
+        if (mIcon != null && !mIcon.hasHint(HINT_NO_TINT)) {
+            // Only set the background if we're tintable
+            iv.setBackground(circle);
+        }
         addView(iv);
         if (mIcon != null) {
-            final boolean isLarge = mIcon.hasHint(HINT_LARGE)
-                    || SUBTYPE_SOURCE.equals(mIcon.getSubType());
-            final int iconSize = isLarge ? mLargeIconSize : mSmallIconSize;
+            boolean isImage = mIcon.hasHint(HINT_NO_TINT);
+            final int iconSize = isImage ? mLargeIconSize : mSmallIconSize;
             SliceViewUtil.createCircledIcon(getContext(), iconSize, mIcon.getIcon(),
-                    isLarge, this /* parent */);
+                    isImage, this /* parent */);
             mUri = slice.getUri();
             setClickable(true);
         } else {

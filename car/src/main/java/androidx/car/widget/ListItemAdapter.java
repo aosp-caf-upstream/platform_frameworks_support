@@ -27,12 +27,12 @@ import android.content.ServiceConnection;
 import android.content.res.TypedArray;
 import android.os.Bundle;
 import android.os.IBinder;
-import android.support.annotation.IntDef;
-import android.support.annotation.LayoutRes;
-import android.support.annotation.Nullable;
-import android.support.annotation.StyleRes;
-import android.support.v7.widget.CardView;
-import android.support.v7.widget.RecyclerView;
+import androidx.annotation.IntDef;
+import androidx.annotation.LayoutRes;
+import androidx.annotation.Nullable;
+import androidx.annotation.StyleRes;
+import androidx.cardview.widget.CardView;
+import androidx.recyclerview.widget.RecyclerView;
 import android.util.SparseArray;
 import android.util.SparseIntArray;
 import android.util.TypedValue;
@@ -158,7 +158,7 @@ public class ListItemAdapter extends
     }
 
     /**
-     * Registers a function that returns {@link android.support.v7.widget.RecyclerView.ViewHolder}
+     * Registers a function that returns {@link RecyclerView.ViewHolder}
      * for its matching view type returned by {@link ListItem#getViewType()}.
      *
      * <p>The function will receive a view as {@link RecyclerView.ViewHolder#itemView}. This view
@@ -227,7 +227,7 @@ public class ListItemAdapter extends
                         ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
                 frameLayout.setBackgroundColor(a.getColor(
                         R.styleable.ListItem_listItemBackgroundColor,
-                        R.color.car_card));
+                        mContext.getResources().getColor(R.color.car_card)));
 
                 container = frameLayout;
                 break;
@@ -241,7 +241,7 @@ public class ListItemAdapter extends
                 card.setRadius(mContext.getResources().getDimensionPixelSize(R.dimen.car_radius_1));
                 card.setCardBackgroundColor(a.getColor(
                         R.styleable.ListItem_listItemBackgroundColor,
-                        R.color.car_card));
+                        mContext.getResources().getColor(R.color.car_card)));
 
                 container = card;
                 break;
@@ -261,12 +261,6 @@ public class ListItemAdapter extends
 
     @Override
     public void onBindViewHolder(ListItem.ViewHolder holder, int position) {
-        ListItem item = mItemProvider.get(position);
-        item.setTitleTextAppearance(mListItemTitleTextAppearance);
-        item.setBodyTextAppearance(mListItemBodyTextAppearance);
-
-        item.bind(holder);
-
         if (mBackgroundStyle == BackgroundStyle.PANEL) {
             ListItemBackgroundResolver.setBackground(
                     holder.itemView, position, mItemProvider.size());
@@ -276,6 +270,12 @@ public class ListItemAdapter extends
         if (mCurrentUxRestrictions != null) {
             holder.complyWithUxRestrictions(mCurrentUxRestrictions);
         }
+
+        ListItem item = mItemProvider.get(position);
+        item.setTitleTextAppearance(mListItemTitleTextAppearance);
+        item.setBodyTextAppearance(mListItemBodyTextAppearance);
+
+        item.bind(holder);
     }
 
     @Override

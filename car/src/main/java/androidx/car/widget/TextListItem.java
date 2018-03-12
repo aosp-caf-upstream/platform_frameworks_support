@@ -22,10 +22,10 @@ import android.car.drivingstate.CarUxRestrictions;
 import android.content.Context;
 import android.content.res.Resources;
 import android.graphics.drawable.Drawable;
-import android.support.annotation.DrawableRes;
-import android.support.annotation.IntDef;
-import android.support.annotation.StyleRes;
-import android.support.v7.widget.RecyclerView;
+import androidx.annotation.DrawableRes;
+import androidx.annotation.IntDef;
+import androidx.annotation.StyleRes;
+import androidx.recyclerview.widget.RecyclerView;
 import android.text.TextUtils;
 import android.view.View;
 import android.view.ViewGroup;
@@ -356,8 +356,8 @@ public class TextListItem extends ListItem<TextListItem.ViewHolder> {
 
         if (mIsBodyPrimary) {
             mBinders.add(vh -> {
-                vh.getTitle().setTextAppearance(getTitleTextAppearance());
-                vh.getBody().setTextAppearance(getBodyTextAppearance());
+                vh.getTitle().setTextAppearance(getBodyTextAppearance());
+                vh.getBody().setTextAppearance(getTitleTextAppearance());
             });
         } else {
             mBinders.add(vh -> {

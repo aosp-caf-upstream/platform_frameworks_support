@@ -16,11 +16,10 @@
 
 package androidx.slice.widget;
 
-import android.annotation.TargetApi;
 import android.content.Context;
-import android.support.annotation.RestrictTo;
-import android.support.v7.widget.LinearLayoutManager;
-import android.support.v7.widget.RecyclerView;
+import androidx.annotation.RestrictTo;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 import android.util.AttributeSet;
 
 import java.util.ArrayList;
@@ -33,7 +32,6 @@ import androidx.slice.SliceItem;
  * @hide
  */
 @RestrictTo(RestrictTo.Scope.LIBRARY)
-@TargetApi(24)
 public class LargeTemplateView extends SliceChildView {
 
     private final LargeSliceAdapter mAdapter;

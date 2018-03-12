@@ -20,12 +20,11 @@ import static android.app.slice.Slice.SUBTYPE_SOURCE;
 import static android.app.slice.SliceItem.FORMAT_IMAGE;
 import static android.app.slice.SliceItem.FORMAT_TEXT;
 
-import android.annotation.TargetApi;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.drawable.Drawable;
-import android.support.annotation.RestrictTo;
+import androidx.annotation.RestrictTo;
 import android.text.SpannableStringBuilder;
 import android.util.TypedValue;
 import android.widget.ImageView;
@@ -41,7 +40,6 @@ import androidx.slice.core.SliceQuery;
  * @hide
  */
 @RestrictTo(RestrictTo.Scope.LIBRARY)
-@TargetApi(24)
 public class MessageView extends SliceChildView {
 
     private TextView mDetails;

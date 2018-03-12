@@ -38,7 +38,6 @@ import static android.app.slice.SliceItem.FORMAT_TIMESTAMP;
 
 import static androidx.slice.SliceConvert.unwrap;
 
-import android.annotation.TargetApi;
 import android.app.PendingIntent;
 import android.app.RemoteInput;
 import android.app.slice.SliceManager;
@@ -47,12 +46,13 @@ import android.graphics.drawable.Icon;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Parcelable;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-import android.support.annotation.RestrictTo;
-import android.support.annotation.RestrictTo.Scope;
-import android.support.annotation.StringDef;
-import android.support.v4.os.BuildCompat;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
+import androidx.annotation.RestrictTo;
+import androidx.annotation.RestrictTo.Scope;
+import androidx.annotation.StringDef;
+import androidx.core.os.BuildCompat;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -437,7 +437,7 @@ public final class Slice {
      * @see Slice
      */
     @RestrictTo(Scope.LIBRARY_GROUP)
-    @SuppressWarnings("NewApi")
+    @SuppressWarnings("NewApi") // Lint doesn't understand BuildCompat.
     @Nullable
     public static Slice bindSlice(Context context, @NonNull Uri uri,
             List<SliceSpec> supportedSpecs) {
@@ -448,7 +448,7 @@ public final class Slice {
         }
     }
 
-    @TargetApi(28)
+    @RequiresApi(28)
     private static Slice callBindSlice(Context context, Uri uri,
             List<SliceSpec> supportedSpecs) {
         return SliceConvert.wrap(context.getSystemService(SliceManager.class)

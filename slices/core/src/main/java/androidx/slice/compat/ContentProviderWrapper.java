@@ -23,11 +23,11 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.CancellationSignal;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-import android.support.annotation.RequiresApi;
-import android.support.annotation.RestrictTo;
-import android.support.annotation.RestrictTo.Scope;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
+import androidx.annotation.RestrictTo;
+import androidx.annotation.RestrictTo.Scope;
 
 /**
  * @hide
@@ -70,6 +70,7 @@ public class ContentProviderWrapper extends ContentProvider {
 
     @Nullable
     @Override
+    @RequiresApi(16)
     public final Cursor query(@NonNull Uri uri, @Nullable String[] projection,
             @Nullable String selection, @Nullable String[] selectionArgs,
             @Nullable String sortOrder, @Nullable CancellationSignal cancellationSignal) {
@@ -115,6 +116,7 @@ public class ContentProviderWrapper extends ContentProvider {
 
     @Nullable
     @Override
+    @RequiresApi(19)
     public final Uri canonicalize(@NonNull Uri url) {
         return mImpl.canonicalize(url);
     }

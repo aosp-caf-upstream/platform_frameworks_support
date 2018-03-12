@@ -28,9 +28,9 @@ import android.graphics.PorterDuff;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.os.IBinder;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-import android.support.v7.widget.RecyclerView;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.recyclerview.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -229,6 +229,11 @@ public abstract class CarDrawerAdapter extends RecyclerView.Adapter<DrawerItemVi
 
     @Override
     public final void onBindViewHolder(DrawerItemViewHolder holder, int position) {
+        // Car may not be initialized thus current UXR will not be available.
+        if (mCurrentUxRestrictions != null) {
+            holder.complyWithUxRestrictions(mCurrentUxRestrictions);
+        }
+
         if (shouldShowDisabledListItem()) {
             holder.getTitle().setText(null);
             holder.getIcon().setImageDrawable(mEmptyListDrawable);
@@ -236,11 +241,6 @@ public abstract class CarDrawerAdapter extends RecyclerView.Adapter<DrawerItemVi
         } else {
             holder.setItemClickListener(this);
             populateViewHolder(holder, position);
-        }
-
-        // Car may not be initialized thus current UXR will not be available.
-        if (mCurrentUxRestrictions != null) {
-            holder.complyWithUxRestrictions(mCurrentUxRestrictions);
         }
     }
 
