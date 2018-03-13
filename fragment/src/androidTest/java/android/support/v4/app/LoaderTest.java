@@ -141,26 +141,6 @@ public class LoaderTest {
         assertEquals("Loaded!", fragment.textView.getText().toString());
     }
 
-    @Test(expected = IllegalStateException.class)
-    public void enforceOnMainThread_initLoader() {
-        LoaderActivity activity = mActivityRule.getActivity();
-        activity.getSupportLoaderManager().initLoader(-1, null,
-                new DummyLoaderCallbacks(activity));
-    }
-
-    @Test(expected = IllegalStateException.class)
-    public void enforceOnMainThread_restartLoader() {
-        LoaderActivity activity = mActivityRule.getActivity();
-        activity.getSupportLoaderManager().restartLoader(-1, null,
-                new DummyLoaderCallbacks(activity));
-    }
-
-    @Test(expected = IllegalStateException.class)
-    public void enforceOnMainThread_destroyLoader() {
-        LoaderActivity activity = mActivityRule.getActivity();
-        activity.getSupportLoaderManager().destroyLoader(-1);
-    }
-
     /**
      * When a change is interrupted with stop, the data in the LoaderManager remains stale.
      */
@@ -175,7 +155,7 @@ public class LoaderTest {
             @Override
             public void run() {
                 final Loader<String> loader =
-                        activity.getSupportLoaderManager().initLoader(DELAY_LOADER, null,
+                        LoaderManager.getInstance(activity).initLoader(DELAY_LOADER, null,
                                 new LoaderManager.LoaderCallbacks<String>() {
                                     @NonNull
                                     @Override
@@ -246,54 +226,41 @@ public class LoaderTest {
         assertEquals("Second Value", activity.textViewB.getText().toString());
     }
 
-
-    public static class LoaderFragment extends Fragment {
+    public static class LoaderFragment extends Fragment implements
+            LoaderManager.LoaderCallbacks<Boolean> {
         private static final int LOADER_ID = 1;
 
         @Override
         public void onActivityCreated(@Nullable Bundle savedInstanceState) {
             super.onActivityCreated(savedInstanceState);
 
-            getLoaderManager().initLoader(LOADER_ID, null,
-                    new DummyLoaderCallbacks(getContext()));
-        }
-    }
-
-    static class DummyLoaderCallbacks implements LoaderManager.LoaderCallbacks<Boolean> {
-        private final Context mContext;
-
-        boolean mOnLoadFinished;
-        boolean mOnLoaderReset;
-
-        DummyLoaderCallbacks(Context context) {
-            mContext = context;
+            LoaderManager.getInstance(this).initLoader(LOADER_ID, null, this);
         }
 
         @NonNull
         @Override
-        public Loader<Boolean> onCreateLoader(int id, Bundle args) {
-            return new DummyLoader(mContext);
+        public Loader<Boolean> onCreateLoader(int id, @Nullable Bundle args) {
+            return new SimpleLoader(requireContext());
         }
 
         @Override
         public void onLoadFinished(@NonNull Loader<Boolean> loader, Boolean data) {
-            mOnLoadFinished = true;
         }
 
         @Override
         public void onLoaderReset(@NonNull Loader<Boolean> loader) {
-            mOnLoaderReset = true;
-        }
-    }
-
-    static class DummyLoader extends Loader<Boolean> {
-        DummyLoader(Context context) {
-            super(context);
         }
 
-        @Override
-        protected void onStartLoading() {
-            deliverResult(true);
+        static class SimpleLoader extends Loader<Boolean> {
+
+            SimpleLoader(@NonNull Context context) {
+                super(context);
+            }
+
+            @Override
+            protected void onStartLoading() {
+                deliverResult(true);
+            }
         }
     }
 }

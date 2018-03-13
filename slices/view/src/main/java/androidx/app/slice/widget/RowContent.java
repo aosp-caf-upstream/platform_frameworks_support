@@ -16,6 +16,8 @@
 
 package androidx.app.slice.widget;
 
+import static android.app.slice.Slice.HINT_ACTIONS;
+import static android.app.slice.Slice.HINT_SHORTCUT;
 import static android.app.slice.Slice.HINT_SUMMARY;
 import static android.app.slice.Slice.HINT_TITLE;
 import static android.app.slice.SliceItem.FORMAT_ACTION;
@@ -28,8 +30,10 @@ import static android.app.slice.SliceItem.FORMAT_TIMESTAMP;
 
 import static androidx.app.slice.core.SliceHints.SUBTYPE_RANGE;
 
+import android.content.Context;
 import android.support.annotation.Nullable;
 import android.support.annotation.RestrictTo;
+import android.text.TextUtils;
 import android.util.Log;
 
 import java.util.ArrayList;
@@ -37,6 +41,7 @@ import java.util.List;
 
 import androidx.app.slice.SliceItem;
 import androidx.app.slice.core.SliceQuery;
+import androidx.app.slice.view.R;
 
 /**
  * Extracts information required to present content in a row format from a slice.
@@ -46,7 +51,7 @@ import androidx.app.slice.core.SliceQuery;
 public class RowContent {
     private static final String TAG = "RowContent";
 
-    private SliceItem mContentIntent;
+    private SliceItem mPrimaryAction;
     private SliceItem mStartItem;
     private SliceItem mTitleItem;
     private SliceItem mSubtitleItem;
@@ -55,56 +60,69 @@ public class RowContent {
     private boolean mEndItemsContainAction;
     private SliceItem mRange;
     private boolean mIsHeader;
+    private int mLineCount = 0;
+    private int mMaxHeight;
+    private int mMinHeight;
 
-    public RowContent(SliceItem rowSlice, boolean isHeader) {
+    public RowContent(Context context, SliceItem rowSlice, boolean isHeader) {
         populate(rowSlice, isHeader);
+        mMaxHeight = context.getResources().getDimensionPixelSize(R.dimen.abc_slice_row_max_height);
+        mMinHeight = context.getResources().getDimensionPixelSize(R.dimen.abc_slice_row_min_height);
     }
 
     /**
      * Resets the content.
      */
     public void reset() {
-        mContentIntent = null;
+        mPrimaryAction = null;
         mStartItem = null;
         mTitleItem = null;
         mSubtitleItem = null;
         mEndItems.clear();
         mIsHeader = false;
+        mLineCount = 0;
     }
 
     /**
      * @return whether this row has content that is valid to display.
      */
-    public boolean populate(SliceItem rowSlice, boolean isHeader) {
+    private boolean populate(SliceItem rowSlice, boolean isHeader) {
         reset();
         mIsHeader = isHeader;
         if (!isValidRow(rowSlice)) {
             Log.w(TAG, "Provided SliceItem is invalid for RowContent");
             return false;
         }
+        // Find primary action first (otherwise filtered out of valid row items)
+        String[] hints = new String[] {HINT_SHORTCUT, HINT_TITLE};
+        mPrimaryAction = SliceQuery.find(rowSlice, FORMAT_SLICE, hints,
+                new String[] { HINT_ACTIONS } /* nonHints */);
+
         // Filter anything not viable for displaying in a row
         ArrayList<SliceItem> rowItems = filterInvalidItems(rowSlice);
         // If we've only got one item that's a slice / action use those items instead
         if (rowItems.size() == 1 && (FORMAT_ACTION.equals(rowItems.get(0).getFormat())
-                || FORMAT_SLICE.equals(rowItems.get(0).getFormat()))) {
+                || FORMAT_SLICE.equals(rowItems.get(0).getFormat()))
+                && !rowItems.get(0).hasHint(HINT_SHORTCUT)) {
             if (isValidRow(rowItems.get(0))) {
                 rowSlice = rowItems.get(0);
                 rowItems = filterInvalidItems(rowSlice);
             }
-        }
-        // Content intent
-        if (FORMAT_ACTION.equals(rowSlice.getFormat())) {
-            mContentIntent = rowSlice;
         }
         if (SUBTYPE_RANGE.equals(rowSlice.getSubType())) {
             mRange = rowSlice;
         }
         if (rowItems.size() > 0) {
             // Start item
-            if (isStartType(rowItems.get(0))) {
-                mStartItem = rowItems.get(0);
-                rowItems.remove(0);
+            SliceItem firstItem = rowItems.get(0);
+            if (FORMAT_SLICE.equals(firstItem.getFormat())) {
+                SliceItem unwrappedItem = firstItem.getSlice().getItems().get(0);
+                if (isStartType(unwrappedItem)) {
+                    mStartItem = unwrappedItem;
+                    rowItems.remove(0);
+                }
             }
+
             // Text + end items
             ArrayList<SliceItem> endItems = new ArrayList<>();
             for (int i = 0; i < rowItems.size(); i++) {
@@ -122,12 +140,20 @@ public class RowContent {
                     endItems.add(item);
                 }
             }
+            if (hasText(mTitleItem)) {
+                mLineCount++;
+            }
+            if (hasText(mSubtitleItem)) {
+                mLineCount++;
+            }
             // Special rules for end items: only one timestamp, can't be mixture of icons / actions
             boolean hasTimestamp = mStartItem != null
                     && FORMAT_TIMESTAMP.equals(mStartItem.getFormat());
             String desiredFormat = null;
             for (int i = 0; i < endItems.size(); i++) {
                 final SliceItem item = endItems.get(i);
+                boolean isAction = FORMAT_SLICE.equals(item.getFormat())
+                        && item.hasHint(HINT_SHORTCUT);
                 if (FORMAT_TIMESTAMP.equals(item.getFormat())) {
                     if (!hasTimestamp) {
                         hasTimestamp = true;
@@ -136,10 +162,10 @@ public class RowContent {
                 } else if (desiredFormat == null) {
                     desiredFormat = item.getFormat();
                     mEndItems.add(item);
-                    mEndItemsContainAction |= FORMAT_ACTION.equals(item.getFormat());
+                    mEndItemsContainAction |= isAction;
                 } else if (desiredFormat.equals(item.getFormat())) {
                     mEndItems.add(item);
-                    mEndItemsContainAction |= FORMAT_ACTION.equals(item.getFormat());
+                    mEndItemsContainAction |= isAction;
                 }
             }
         }
@@ -165,8 +191,8 @@ public class RowContent {
     }
 
     @Nullable
-    public SliceItem getContentIntent() {
-        return mContentIntent;
+    public SliceItem getPrimaryAction() {
+        return mPrimaryAction;
     }
 
     @Nullable
@@ -194,10 +220,37 @@ public class RowContent {
     }
 
     /**
-     * @return whether {@link #getEndItems()} contains a SliceItem with FORMAT_ACTION
+     * @return whether {@link #getEndItems()} contains a SliceItem with FORMAT_SLICE, HINT_SHORTCUT
      */
     public boolean endItemsContainAction() {
         return mEndItemsContainAction;
+    }
+
+    /**
+     * @return the number of lines of text contained in this row.
+     */
+    public int getLineCount() {
+        return mLineCount;
+    }
+
+    /**
+     * @return the height to display a row at when it is used as a small template.
+     */
+    public int getSmallHeight() {
+        return mMaxHeight;
+    }
+
+    /**
+     * @return the height the content in this template requires to be displayed.
+     */
+    public int getActualHeight() {
+        return isValid()
+                ? (getLineCount() > 1 || mIsHeader) ? mMaxHeight : mMinHeight
+                : 0;
+    }
+
+    private static boolean hasText(SliceItem textSlice) {
+        return textSlice != null && !TextUtils.isEmpty(textSlice.getText());
     }
 
     /**
@@ -232,16 +285,22 @@ public class RowContent {
     }
 
     /**
-     * @return whether this item has valid content to display in a row.
+     * @return whether this item is valid content to display in a row.
      */
     private static boolean isValidRowContent(SliceItem slice, SliceItem item) {
-        // TODO -- filter for shortcut once that's in
+        if (FORMAT_SLICE.equals(item.getFormat()) && !item.hasHint(HINT_SHORTCUT)) {
+            // Unpack contents of slice
+            item = item.getSlice().getItems().get(0);
+        }
         final String itemFormat = item.getFormat();
-        // Must be a format that is presentable
         return FORMAT_TEXT.equals(itemFormat)
                 || FORMAT_IMAGE.equals(itemFormat)
                 || FORMAT_TIMESTAMP.equals(itemFormat)
                 || FORMAT_REMOTE_INPUT.equals(itemFormat)
+                || (FORMAT_SLICE.equals(itemFormat) && item.hasHint(HINT_TITLE)
+                && !item.hasHint(HINT_SHORTCUT))
+                || (FORMAT_SLICE.equals(itemFormat) && item.hasHint(HINT_SHORTCUT)
+                && !item.hasHint(HINT_TITLE))
                 || FORMAT_ACTION.equals(itemFormat)
                 || (FORMAT_INT.equals(itemFormat) && SUBTYPE_RANGE.equals(slice.getSubType()));
     }
@@ -252,9 +311,8 @@ public class RowContent {
      */
     private static boolean isStartType(SliceItem item) {
         final String type = item.getFormat();
-        return item.hasHint(HINT_TITLE)
-                && ((FORMAT_ACTION.equals(type) && (SliceQuery.find(item, FORMAT_IMAGE) != null))
+        return (FORMAT_ACTION.equals(type) && (SliceQuery.find(item, FORMAT_IMAGE) != null))
                     || FORMAT_IMAGE.equals(type)
-                    || FORMAT_TIMESTAMP.equals(type));
+                    || FORMAT_TIMESTAMP.equals(type);
     }
 }

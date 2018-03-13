@@ -13,7 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+// TO debug processor, run:
+//./gradlew :r:in:k:clean :r:in:k:cC --no-daemon
+// -Dorg.gradle.debug=true
+// -Dkotlin.compiler.execution.strategy="in-process"
 import static android.support.dependencies.DependenciesKt.*
 
 plugins {
@@ -41,9 +44,7 @@ dependencies {
     implementation(project(":persistence:db-framework"))
     implementation(project(":room:runtime"))
     implementation(project(":arch:runtime"))
-
-    implementation(SUPPORT_APPCOMPAT, libs.support_exclude_config)
-    kapt project(":room:compiler")
+    implementation(project(":lifecycle:extensions"))
     kaptAndroidTest project(":room:compiler")
 
     androidTestImplementation(TEST_RUNNER) {
@@ -58,10 +59,11 @@ dependencies {
     androidTestImplementation project(':lifecycle:extensions')
     androidTestImplementation project(':lifecycle:common')
     androidTestImplementation project(':lifecycle:runtime')
+    androidTestImplementation project(':room:guava')
     androidTestImplementation project(':room:testing')
     androidTestImplementation project(':room:rxjava2')
     androidTestImplementation project(':arch:core-testing')
-    androidTestImplementation(GUAVA)
+    androidTestImplementation(GUAVA_ANDROID)
     androidTestImplementation(RX_JAVA)
     testImplementation(MOCKITO_CORE)
 }
@@ -69,3 +71,8 @@ dependencies {
 tasks['check'].dependsOn(tasks['connectedCheck'])
 
 uploadArchives.enabled = false
+
+supportTestApp {
+    // to assert that room generates somewhat OK code.
+    enableErrorProne = true
+}

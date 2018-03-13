@@ -146,9 +146,10 @@ object ProcessorErrors {
             " queries."
 
     val OBSERVABLE_QUERY_NOTHING_TO_OBSERVE = "Observable query return type (LiveData, Flowable" +
-            " etc) can only be used with SELECT queries that directly or indirectly (via" +
-            " @Relation, for example) access at least one table. For @RawQuery, you should" +
-            " specify the list of tables to be observed via the observedEntities field."
+            ", DataSource, DataSourceFactory etc) can only be used with SELECT queries that" +
+            " directly or indirectly (via @Relation, for example) access at least one table. For" +
+            " @RawQuery, you should specify the list of tables to be observed via the" +
+            " observedEntities field."
 
     val RECURSIVE_REFERENCE_DETECTED = "Recursive referencing through @Embedded and/or @Relation " +
             "detected: %s"
@@ -448,6 +449,10 @@ object ProcessorErrors {
                 to add $entity to the entities section of the @Database?
                 """.trim()
     }
+
+    val MISSING_ROOM_GUAVA_ARTIFACT = "To use Guava features, you must add `guava`" +
+            " artifact from Room as a dependency. android.arch.persistence.room:guava:<version>"
+
     val MISSING_ROOM_RXJAVA2_ARTIFACT = "To use RxJava2 features, you must add `rxjava2`" +
             " artifact from Room as a dependency. android.arch.persistence.room:rxjava2:<version>"
 

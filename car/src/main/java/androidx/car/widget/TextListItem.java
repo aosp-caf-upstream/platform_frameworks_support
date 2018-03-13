@@ -18,6 +18,7 @@ package androidx.car.widget;
 
 import static java.lang.annotation.RetentionPolicy.SOURCE;
 
+import android.car.drivingstate.CarUxRestrictions;
 import android.content.Context;
 import android.content.res.Resources;
 import android.graphics.drawable.Drawable;
@@ -39,6 +40,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import androidx.car.R;
+import androidx.car.utils.CarUxRestrictionsUtils;
 
 /**
  * Class to build a list item of text.
@@ -228,9 +230,7 @@ public class TextListItem extends ListItem<TextListItem.ViewHolder> {
     }
 
     private void setOnClickListener() {
-        if (mOnClickListener != null) {
-            mBinders.add(vh -> vh.itemView.setOnClickListener(mOnClickListener));
-        }
+        mBinders.add(vh -> vh.itemView.setOnClickListener(mOnClickListener));
     }
 
     private void setPrimaryIconContent() {
@@ -341,13 +341,13 @@ public class TextListItem extends ListItem<TextListItem.ViewHolder> {
 
         if (mIsBodyPrimary) {
             mBinders.add(vh -> {
-                vh.getTitle().setTextAppearance(R.style.CarBody2);
-                vh.getBody().setTextAppearance(R.style.CarBody1);
+                vh.getTitle().setTextAppearance(R.style.TextAppearance_Car_Body2);
+                vh.getBody().setTextAppearance(R.style.TextAppearance_Car_Body1);
             });
         } else {
             mBinders.add(vh -> {
-                vh.getTitle().setTextAppearance(R.style.CarBody1);
-                vh.getBody().setTextAppearance(R.style.CarBody2);
+                vh.getTitle().setTextAppearance(R.style.TextAppearance_Car_Body1);
+                vh.getBody().setTextAppearance(R.style.TextAppearance_Car_Body2);
             });
         }
     }
@@ -585,19 +585,11 @@ public class TextListItem extends ListItem<TextListItem.ViewHolder> {
     /**
      * Sets the body text of item.
      *
-     * <p>Text beyond length required by regulation will be truncated.
-     *
      * @param body text to be displayed.
      * @param asPrimary sets {@code Body Text} as primary text of item.
      */
     public void setBody(String body, boolean asPrimary) {
-        int limit = mContext.getResources().getInteger(
-                R.integer.car_list_item_text_length_limit);
-        if (body.length() < limit) {
-            mBody = body;
-        } else {
-            mBody = body.substring(0, limit) + mContext.getString(R.string.ellipsis);
-        }
+        mBody = body;
         mIsBodyPrimary = asPrimary;
 
         markDirty();
@@ -760,6 +752,18 @@ public class TextListItem extends ListItem<TextListItem.ViewHolder> {
             mAction1Divider = itemView.findViewById(R.id.action1_divider);
             mAction2 = itemView.findViewById(R.id.action2);
             mAction2Divider = itemView.findViewById(R.id.action2_divider);
+        }
+
+        /**
+         * Update children views to comply with car UX restrictions.
+         *
+         * <p>{@code Body} text might be truncated to meet length limit required by regulation.
+         *
+         * @param restrictions current car UX restrictions.
+         */
+        @Override
+        public void complyWithUxRestrictions(CarUxRestrictions restrictions) {
+            CarUxRestrictionsUtils.comply(itemView.getContext(), restrictions, getBody());
         }
 
         public RelativeLayout getContainerLayout() {

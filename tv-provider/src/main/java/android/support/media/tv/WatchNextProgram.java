@@ -19,17 +19,15 @@ import static android.support.annotation.RestrictTo.Scope.LIBRARY_GROUP;
 
 import android.content.ContentValues;
 import android.database.Cursor;
-import android.media.tv.TvContentRating;  // For javadoc gen of super class
 import android.os.Build;
 import android.support.annotation.IntDef;
 import android.support.annotation.RestrictTo;
-import android.support.media.tv.TvContractCompat.PreviewPrograms;  // For javadoc gen of super class
-import android.support.media.tv.TvContractCompat.Programs;  // For javadoc gen of super class
-import android.support.media.tv.TvContractCompat.Programs.Genres;  // For javadoc gen of super class
 import android.support.media.tv.TvContractCompat.WatchNextPrograms;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
+import java.util.Objects;
+import java.util.Set;
 
 /**
  * A convenience class to access {@link WatchNextPrograms} entries in the system content
@@ -98,7 +96,8 @@ public final class WatchNextProgram extends BasePreviewProgram {
     })
     @Retention(RetentionPolicy.SOURCE)
     @RestrictTo(LIBRARY_GROUP)
-    public @interface WatchNextType {}
+    public @interface WatchNextType {
+    }
 
     /**
      * The unknown watch next type. Use this type when the actual type is not known.
@@ -133,6 +132,23 @@ public final class WatchNextProgram extends BasePreviewProgram {
             return false;
         }
         return mValues.equals(((WatchNextProgram) other).mValues);
+    }
+
+    /**
+     * Indicates whether some other WatchNextProgram has any set attribute that is different from
+     * this WatchNextProgram's respective attributes. An attribute is considered "set" if its key
+     * is present in the ContentValues vector.
+     */
+    public boolean hasAnyUpdatedValues(WatchNextProgram update) {
+        Set<String> updateKeys = update.mValues.keySet();
+        for (String key : updateKeys) {
+            Object updateValue = update.mValues.get(key);
+            Object currValue = mValues.get(key);
+            if (!Objects.deepEquals(updateValue, currValue)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
@@ -192,7 +208,7 @@ public final class WatchNextProgram extends BasePreviewProgram {
     }
 
     private static String[] getProjection() {
-        String[] oColumns = new String[] {
+        String[] oColumns = new String[]{
                 WatchNextPrograms.COLUMN_WATCH_NEXT_TYPE,
                 WatchNextPrograms.COLUMN_LAST_ENGAGEMENT_TIME_UTC_MILLIS,
         };
@@ -212,6 +228,7 @@ public final class WatchNextProgram extends BasePreviewProgram {
 
         /**
          * Creates a new Builder object with values copied from another Program.
+         *
          * @param other The Program you're copying from.
          */
         public Builder(WatchNextProgram other) {
@@ -239,7 +256,8 @@ public final class WatchNextProgram extends BasePreviewProgram {
          * Sets the time when the program is going to begin in milliseconds since the epoch.
          *
          * @param lastEngagementTimeUtcMillis The value of
-         * {@link WatchNextPrograms#COLUMN_LAST_ENGAGEMENT_TIME_UTC_MILLIS} for the program.
+         *      {@link WatchNextPrograms#COLUMN_LAST_ENGAGEMENT_TIME_UTC_MILLIS}
+         *      for the program.
          * @return This Builder object to allow for chaining of calls to builder methods.
          */
         public Builder setLastEngagementTimeUtcMillis(long lastEngagementTimeUtcMillis) {

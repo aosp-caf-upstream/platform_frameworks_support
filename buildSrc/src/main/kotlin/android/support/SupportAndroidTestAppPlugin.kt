@@ -17,10 +17,14 @@
 package android.support
 
 import android.support.SupportConfig.INSTRUMENTATION_RUNNER
+import android.support.license.CheckExternalDependencyLicensesTask
 import com.android.build.gradle.AppExtension
+import net.ltgt.gradle.errorprone.ErrorProneBasePlugin
+import net.ltgt.gradle.errorprone.ErrorProneToolChain
 import org.gradle.api.JavaVersion
 import org.gradle.api.Plugin
 import org.gradle.api.Project
+import org.gradle.api.tasks.compile.JavaCompile
 
 /**
  * Support library specific com.android.application plugin that sets common configurations needed
@@ -30,7 +34,7 @@ class SupportAndroidTestAppPlugin : Plugin<Project> {
     override fun apply(project: Project) {
         val testAppExtension = project.extensions.create("supportTestApp",
                 SupportAndroidTestAppExtension::class.java, project)
-
+        CheckExternalDependencyLicensesTask.configure(project)
         project.afterEvaluate {
             val application = project.extensions.findByType(AppExtension::class.java)
                     ?: throw Exception("Failed to find Android extension")
@@ -38,6 +42,7 @@ class SupportAndroidTestAppPlugin : Plugin<Project> {
         }
 
         project.apply(mapOf("plugin" to "com.android.application"))
+        project.apply(mapOf("plugin" to ErrorProneBasePlugin::class.java))
 
         val application = project.extensions.findByType(AppExtension::class.java)
                 ?: throw Exception("Failed to find Android extension")
@@ -64,6 +69,17 @@ class SupportAndroidTestAppPlugin : Plugin<Project> {
         val baseline = SupportConfig.getLintBaseline(project)
         if (baseline.exists()) {
             application.lintOptions.baseline(baseline)
+        }
+
+        val toolChain = ErrorProneToolChain.create(project)
+        project.dependencies.add("errorprone", ERROR_PRONE_VERSION)
+
+        project.afterEvaluate {
+            if (testAppExtension.enableErrorProne) {
+                project.tasks.forEach {
+                    (it as? JavaCompile)?.configureWithErrorProne(toolChain)
+                }
+            }
         }
     }
 }

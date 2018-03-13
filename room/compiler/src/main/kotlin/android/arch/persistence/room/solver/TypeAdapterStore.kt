@@ -17,6 +17,7 @@
 package android.arch.persistence.room.solver
 
 import android.arch.persistence.room.Entity
+import android.arch.persistence.room.ext.CommonTypeNames
 import android.arch.persistence.room.ext.GuavaBaseTypeNames
 import android.arch.persistence.room.ext.hasAnnotation
 import android.arch.persistence.room.ext.typeName
@@ -27,11 +28,12 @@ import android.arch.persistence.room.processor.EntityProcessor
 import android.arch.persistence.room.processor.FieldProcessor
 import android.arch.persistence.room.processor.PojoProcessor
 import android.arch.persistence.room.solver.binderprovider.CursorQueryResultBinderProvider
+import android.arch.persistence.room.solver.binderprovider.DataSourceFactoryQueryResultBinderProvider
 import android.arch.persistence.room.solver.binderprovider.DataSourceQueryResultBinderProvider
 import android.arch.persistence.room.solver.binderprovider.FlowableQueryResultBinderProvider
 import android.arch.persistence.room.solver.binderprovider.InstantQueryResultBinderProvider
 import android.arch.persistence.room.solver.binderprovider.LiveDataQueryResultBinderProvider
-import android.arch.persistence.room.solver.binderprovider.DataSourceFactoryQueryResultBinderProvider
+import android.arch.persistence.room.solver.binderprovider.GuavaListenableFutureQueryResultBinderProvider
 import android.arch.persistence.room.solver.binderprovider.RxMaybeQueryResultBinderProvider
 import android.arch.persistence.room.solver.binderprovider.RxSingleQueryResultBinderProvider
 import android.arch.persistence.room.solver.query.parameter.ArrayQueryParameterAdapter
@@ -43,6 +45,7 @@ import android.arch.persistence.room.solver.query.result.EntityRowAdapter
 import android.arch.persistence.room.solver.query.result.GuavaOptionalQueryResultAdapter
 import android.arch.persistence.room.solver.query.result.InstantQueryResultBinder
 import android.arch.persistence.room.solver.query.result.ListQueryResultAdapter
+import android.arch.persistence.room.solver.query.result.OptionalQueryResultAdapter
 import android.arch.persistence.room.solver.query.result.PojoRowAdapter
 import android.arch.persistence.room.solver.query.result.QueryResultAdapter
 import android.arch.persistence.room.solver.query.result.QueryResultBinder
@@ -135,6 +138,7 @@ class TypeAdapterStore private constructor(
             CursorQueryResultBinderProvider(context),
             LiveDataQueryResultBinderProvider(context),
             FlowableQueryResultBinderProvider(context),
+            GuavaListenableFutureQueryResultBinderProvider(context),
             RxMaybeQueryResultBinderProvider(context),
             RxSingleQueryResultBinderProvider(context),
             DataSourceQueryResultBinderProvider(context),
@@ -284,7 +288,14 @@ class TypeAdapterStore private constructor(
                 // The Optional adapter will reappend the Optional type.
                 val typeArg = declared.typeArguments.first()
                 val rowAdapter = findRowAdapter(typeArg, query) ?: return null
-                return GuavaOptionalQueryResultAdapter(rowAdapter)
+                return GuavaOptionalQueryResultAdapter(SingleEntityQueryResultAdapter(rowAdapter))
+            } else if (
+                    context.processingEnv.typeUtils.erasure(typeMirror).typeName() ==
+                    CommonTypeNames.OPTIONAL) {
+                // Handle java.util.Optional similarly.
+                val typeArg = declared.typeArguments.first()
+                val rowAdapter = findRowAdapter(typeArg, query) ?: return null
+                return OptionalQueryResultAdapter(SingleEntityQueryResultAdapter(rowAdapter))
             } else if (MoreTypes.isTypeOf(java.util.List::class.java, typeMirror)) {
                 val typeArg = declared.typeArguments.first()
                 val rowAdapter = findRowAdapter(typeArg, query) ?: return null
@@ -472,6 +483,11 @@ class TypeAdapterStore private constructor(
         }
     }
 
+    /**
+     * Returns all type converters that can receive input type and return into another type.
+     * The returned list is ordered by priority such that if we have an exact match, it is
+     * prioritized.
+     */
     private fun getAllTypeConverters(input: TypeMirror, excludes: List<TypeMirror>):
             List<TypeConverter> {
         val types = context.processingEnv.typeUtils
@@ -480,6 +496,13 @@ class TypeAdapterStore private constructor(
         return typeConverters.filter { converter ->
             types.isAssignable(input, converter.from) &&
                     !excludes.any { types.isSameType(it, converter.to) }
-        }
+        }.sortedByDescending {
+                    // if it is the same, prioritize
+                    if (types.isSameType(it.from, input)) {
+                        2
+                    } else {
+                        1
+                    }
+                }
     }
 }

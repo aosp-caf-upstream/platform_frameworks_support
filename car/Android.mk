@@ -18,14 +18,17 @@ LOCAL_PATH := $(call my-dir)
 # Applications that use this library must specify
 #
 #   LOCAL_STATIC_ANDROID_LIBRARIES := \
-#       android-support-car\
-#       android-support-design \
-#       android-support-v4 \
-#       android-support-v7-appcompat \
-#       android-support-v7-cardview \
-#       android-support-v7-recyclerview
+#       $(ANDROID_SUPPORT_CAR_TARGETS)
 #
 # in their makefiles to include the resources and their dependencies in their package.
+
+# Create a prebuilt library for android.car stubs. Implementation will be available as part of
+# system on automotive devices.
+include $(CLEAR_VARS)
+LOCAL_PREBUILT_STATIC_JAVA_LIBRARIES := \
+        prebuilt-android.car-stubs:car-stubs/android.car.jar
+include $(BUILD_MULTI_PREBUILT)
+
 include $(CLEAR_VARS)
 LOCAL_USE_AAPT2 := true
 LOCAL_MODULE := android-support-car
@@ -33,14 +36,14 @@ LOCAL_SDK_VERSION := $(SUPPORT_CURRENT_SDK_VERSION)
 LOCAL_SRC_FILES := $(call all-java-files-under,src/main/java)
 LOCAL_RESOURCE_DIR := $(LOCAL_PATH)/res
 LOCAL_MANIFEST_FILE := src/main/AndroidManifest.xml
+LOCAL_STATIC_JAVA_LIBRARIES := \
+    prebuilt-android.car-stubs
 LOCAL_JAVA_LIBRARIES := \
-        android-support-annotations
+    android-support-annotations
 LOCAL_SHARED_ANDROID_LIBRARIES := \
-        android-support-design \
-        android-support-v4 \
-        android-support-v7-appcompat \
-        android-support-v7-cardview \
-        android-support-v7-recyclerview
+    $(ANDROID_SUPPORT_DESIGN_TARGETS) \
+    android-support-media-compat \
+    android-support-v7-cardview
 LOCAL_JAR_EXCLUDE_FILES := none
 LOCAL_JAVA_LANGUAGE_VERSION := 1.8
 LOCAL_AAPT_FLAGS := --add-javadoc-annotation doconly

@@ -325,12 +325,12 @@ class XmlResourcesTransformerTest {
             restrictToPackagePrefixes = prefixes,
             rewriteRules = emptyList(),
             slRules = emptyList(),
-            pomRewriteRules = emptyList(),
+            pomRewriteRules = emptySet(),
             typesMap = typeMap,
             proGuardMap = ProGuardTypesMap.EMPTY,
             packageMap = packageMap
         )
-        val context = TransformationContext(config, rewritingSupportLib)
+        val context = TransformationContext(config, rewritingSupportLib = rewritingSupportLib)
         context.libraryName = libraryName
         val processor = XmlResourcesTransformer(context)
         val fileName = if (isManifestFile) {

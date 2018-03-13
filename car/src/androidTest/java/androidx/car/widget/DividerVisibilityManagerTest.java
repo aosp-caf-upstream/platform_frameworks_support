@@ -16,7 +16,7 @@
 
 package androidx.car.widget;
 
-import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.closeTo;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.core.IsNull.notNullValue;
@@ -36,6 +36,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -67,16 +68,18 @@ public final class DividerVisibilityManagerTest {
     private DividerVisibilityManagerTestActivity mActivity;
     private PagedListView mPagedListView;
 
-    @Before
-    public void setUp() {
-        mActivity = mActivityRule.getActivity();
-        mPagedListView = mActivity.findViewById(R.id.paged_list_view_with_dividers);
-    }
-
     /** Returns {@code true} if the testing device has the automotive feature flag. */
     private boolean isAutoDevice() {
         PackageManager packageManager = mActivityRule.getActivity().getPackageManager();
         return packageManager.hasSystemFeature(PackageManager.FEATURE_AUTOMOTIVE);
+    }
+
+    @Before
+    public void setUp() {
+        Assume.assumeTrue(isAutoDevice());
+
+        mActivity = mActivityRule.getActivity();
+        mPagedListView = mActivity.findViewById(R.id.paged_list_view_with_dividers);
     }
 
     /** Sets up {@link #mPagedListView} with the given number of items. */
@@ -95,10 +98,6 @@ public final class DividerVisibilityManagerTest {
 
     @Test
     public void setCustomDividerVisibilityManager() throws Throwable {
-        if (!isAutoDevice()) {
-            return;
-        }
-
         final int itemCount = 8;
         setUpPagedListView(itemCount /* itemCount */);
         RecyclerView.LayoutManager layoutManager =
@@ -117,8 +116,8 @@ public final class DividerVisibilityManagerTest {
             }
         });
         for (int i = 0; i < itemCount - 1; i++) {
-            assertThat(views[i + 1].getTop() - views[i].getBottom(),
-                    is(equalTo(2 * (dividerHeight / 2))));
+            assertThat((double) views[i + 1].getTop() - views[i].getBottom(),
+                    is(closeTo(2 * (dividerHeight / 2), 1.0f)));
         }
 
 
@@ -139,7 +138,7 @@ public final class DividerVisibilityManagerTest {
             if (dvm.shouldHideDivider(i)) {
                 assertEquals(distance, 0);
             } else {
-                assertEquals(distance, 2 * (dividerHeight / 2));
+                assertThat((double) distance, is(closeTo(2 * (dividerHeight / 2), 1.0f)));
             }
         }
     }

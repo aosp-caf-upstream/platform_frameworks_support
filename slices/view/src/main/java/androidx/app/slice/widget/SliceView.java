@@ -16,11 +16,9 @@
 
 package androidx.app.slice.widget;
 
-import static android.app.slice.Slice.HINT_ACTIONS;
 import static android.app.slice.Slice.HINT_HORIZONTAL;
 import static android.app.slice.Slice.SUBTYPE_COLOR;
 import static android.app.slice.SliceItem.FORMAT_INT;
-import static android.app.slice.SliceItem.FORMAT_SLICE;
 
 import android.arch.lifecycle.Observer;
 import android.content.Context;
@@ -39,6 +37,7 @@ import java.util.List;
 
 import androidx.app.slice.Slice;
 import androidx.app.slice.SliceItem;
+import androidx.app.slice.SliceUtils;
 import androidx.app.slice.core.SliceQuery;
 import androidx.app.slice.view.R;
 
@@ -115,24 +114,22 @@ public class SliceView extends ViewGroup implements Observer<Slice> {
      */
     public static final int MODE_SHORTCUT    = 3;
 
-    /**
-     * Will select the type of slice binding based on size of the View. TODO: Put in some info about
-     * that selection.
-     */
-    private static final int MODE_AUTO = 0;
-
-    private int mMode = MODE_AUTO;
-    private SliceChildView mCurrentView;
+    private int mMode = MODE_LARGE;
     private Slice mCurrentSlice;
-    private final ActionRow mActions;
-    private final int mShortcutSize;
-    private OnSliceActionListener mSliceObserver;
+    private SliceChildView mCurrentView;
+    private List<SliceItem> mActions;
+    private final ActionRow mActionRow;
 
-    private boolean mShowActions = true;
+    private boolean mShowActions = false;
     private boolean mIsScrollable = true;
 
+    private final int mShortcutSize;
+    private final int mMinLargeHeight;
+
     private AttributeSet mAttrs;
-    private int mThemeTintColor;
+    private int mThemeTintColor = -1;
+
+    private OnSliceActionListener mSliceObserver;
 
     public SliceView(Context context) {
         this(context, null);
@@ -156,47 +153,77 @@ public class SliceView extends ViewGroup implements Observer<Slice> {
         } finally {
             a.recycle();
         }
-        mActions = new ActionRow(getContext(), true);
-        mActions.setBackground(new ColorDrawable(0xffeeeeee));
+        // TODO: action row background should support light / dark / maybe presenter customization
+        mActionRow = new ActionRow(getContext(), true);
+        mActionRow.setBackground(new ColorDrawable(0xffeeeeee));
         mCurrentView = new LargeTemplateView(getContext());
+        mCurrentView.setMode(getMode());
         addView(mCurrentView.getView(), getChildLp(mCurrentView.getView()));
-        addView(mActions, getChildLp(mActions));
+        addView(mActionRow, getChildLp(mActionRow));
         mShortcutSize = getContext().getResources()
                 .getDimensionPixelSize(R.dimen.abc_slice_shortcut_size);
+        mMinLargeHeight = getResources().getDimensionPixelSize(R.dimen.abc_slice_large_height);
+    }
+
+    private int getHeightForMode() {
+        int mode = getMode();
+        if (mode == MODE_SHORTCUT) {
+            return mShortcutSize;
+        }
+        return mode == MODE_LARGE
+                ? mCurrentView.getActualHeight()
+                : mCurrentView.getSmallHeight();
     }
 
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         int width = MeasureSpec.getSize(widthMeasureSpec);
         int childWidth = MeasureSpec.getSize(widthMeasureSpec);
-        int childHeight = MeasureSpec.getSize(heightMeasureSpec);
         if (MODE_SHORTCUT == mMode) {
-            // TODO: consider scaling the shortcut to fit
+            // TODO: consider scaling the shortcut to fit if too small
             childWidth = mShortcutSize;
             width = mShortcutSize;
         }
+
+        final int actionHeight = mActionRow.getVisibility() != View.GONE
+                ? mActionRow.getMeasuredHeight()
+                : 0;
+        final int sliceHeight = getHeightForMode() + actionHeight;
+        final int heightAvailable = MeasureSpec.getSize(heightMeasureSpec);
+        final int heightMode = MeasureSpec.getMode(heightMeasureSpec);
+        int height = heightAvailable;
+        if (heightAvailable >= sliceHeight) {
+            // Available space is larger than the slice
+            if (heightMode == MeasureSpec.AT_MOST || heightMode == MeasureSpec.UNSPECIFIED) {
+                height = sliceHeight;
+            }
+        } else {
+            // Not enough space available for slice in current mode
+            if (getMode() == MODE_LARGE && heightAvailable >= mMinLargeHeight + actionHeight) {
+                // It's just a slice with scrolling content; cap it to height available.
+                height = heightAvailable;
+            } else if (getMode() == MODE_SHORTCUT) {
+                // TODO: consider scaling the shortcut to fit if too small
+                height = mShortcutSize;
+            }
+        }
+        heightMeasureSpec = MeasureSpec.makeMeasureSpec(height, MeasureSpec.EXACTLY);
+
+        // Measure the children without the padding
         final int left = getPaddingLeft();
         final int top = getPaddingTop();
         final int right = getPaddingRight();
         final int bot = getPaddingBottom();
-
-        // Measure the children without the padding
+        int childHeight = MeasureSpec.getSize(heightMeasureSpec);
         childWidth -= left + right;
         childHeight -= top + bot;
         int childWidthMeasureSpec = MeasureSpec.makeMeasureSpec(childWidth, MeasureSpec.EXACTLY);
         int childHeightMeasureSpec = MeasureSpec.makeMeasureSpec(childHeight, MeasureSpec.EXACTLY);
         measureChildren(childWidthMeasureSpec, childHeightMeasureSpec);
 
-        // Figure out parent height
-        int actionHeight = mActions.getVisibility() != View.GONE
-                ? mActions.getMeasuredHeight()
-                : 0;
-        int currViewHeight = mCurrentView.getView().getMeasuredHeight() + top + bot;
-        int newHeightSpec = MeasureSpec.makeMeasureSpec(currViewHeight + actionHeight,
-                MeasureSpec.EXACTLY);
         // Figure out parent width
         width += left + right;
-        setMeasuredDimension(width, newHeightSpec);
+        setMeasuredDimension(width, heightMeasureSpec);
     }
 
     @Override
@@ -207,11 +234,11 @@ public class SliceView extends ViewGroup implements Observer<Slice> {
         final int right = getPaddingRight();
         final int bottom = getPaddingBottom();
         v.layout(left, top, left + v.getMeasuredWidth(), top + v.getMeasuredHeight());
-        if (mActions.getVisibility() != View.GONE) {
-            mActions.layout(left,
+        if (mActionRow.getVisibility() != View.GONE) {
+            mActionRow.layout(left,
                     top + v.getMeasuredHeight() + bottom,
-                    left + mActions.getMeasuredWidth() + right,
-                    top + v.getMeasuredHeight() + bottom + mActions.getMeasuredHeight());
+                    left + mActionRow.getMeasuredWidth() + right,
+                    top + v.getMeasuredHeight() + bottom + mActionRow.getMeasuredHeight());
         }
     }
 
@@ -227,13 +254,54 @@ public class SliceView extends ViewGroup implements Observer<Slice> {
      * content see {@link SliceLiveData}.
      */
     public void setSlice(@Nullable Slice slice) {
-        if (mCurrentSlice != null && slice != null
-                && !mCurrentSlice.getUri().equals(slice.getUri())) {
-            // New slice, reset view
-            mCurrentView.resetView();
+        if (slice != null) {
+            if (mCurrentSlice == null || mCurrentSlice.getUri() != slice.getUri()) {
+                // New slice, new actions
+                mActions = SliceUtils.getSliceActions(slice);
+                mCurrentView.resetView();
+            }
+        } else {
+            // No slice, no actions
+            mActions = null;
         }
         mCurrentSlice = slice;
         reinflate();
+    }
+
+    /**
+     * Returns the slice actions presented in this view.
+     */
+    @Nullable
+    public List<SliceItem> getSliceActions() {
+        return mActions;
+    }
+
+    /**
+     * Sets the slice actions to display for the slice contained in this view. Normally SliceView
+     * will automatically show actions, however, it is possible to reorder or omit actions on the
+     * view using this method. This is generally discouraged.
+     * <p>
+     * It is required that the slice be set on this view before actions can be set, otherwise
+     * this will throw {@link IllegalStateException}. If any of the actions supplied are not
+     * available for the slice set on this view (i.e. the action is not returned by
+     * {@link SliceUtils#getSliceActions(Slice)} this will throw {@link IllegalArgumentException}.
+     */
+    public void setSliceActions(@Nullable List<SliceItem> newActions) {
+        // Check that these actions are part of available set
+        if (mCurrentSlice == null) {
+            throw new IllegalStateException("Trying to set actions on a view without a slice");
+        }
+        List<SliceItem> availableActions = SliceUtils.getSliceActions(mCurrentSlice);
+        if (availableActions != null && newActions != null) {
+            for (int i = 0; i < newActions.size(); i++) {
+                if (!availableActions.contains(newActions.get(i))) {
+                    throw new IllegalArgumentException(
+                            "Trying to set an action that isn't available: " + newActions.get(i));
+                }
+            }
+        }
+        mActions = newActions;
+        updateActions();
     }
 
     /**
@@ -280,6 +348,9 @@ public class SliceView extends ViewGroup implements Observer<Slice> {
         if (animate) {
             Log.e(TAG, "Animation not supported yet");
         }
+        if (mMode == mode) {
+            return;
+        }
         mMode = mode;
         reinflate();
     }
@@ -288,9 +359,6 @@ public class SliceView extends ViewGroup implements Observer<Slice> {
      * @return the mode this view is presenting in.
      */
     public @SliceMode int getMode() {
-        if (mMode == MODE_AUTO) {
-            return MODE_LARGE;
-        }
         return mMode;
     }
 
@@ -302,20 +370,24 @@ public class SliceView extends ViewGroup implements Observer<Slice> {
     @RestrictTo(RestrictTo.Scope.LIBRARY)
     public void setShowActionRow(boolean show) {
         mShowActions = show;
-        reinflate();
+        updateActions();
     }
 
-    private SliceChildView createView(int mode) {
+    /**
+     * @return whether this view is showing a row of actions.
+     * @hide
+     */
+    @RestrictTo(RestrictTo.Scope.LIBRARY)
+    public boolean isShowingActionRow() {
+        return mShowActions;
+    }
+
+    private SliceChildView createView(int mode, boolean isGrid) {
         switch (mode) {
             case MODE_SHORTCUT:
                 return new ShortcutView(getContext());
             case MODE_SMALL:
-                // Check if it's horizontal and use a grid instead
-                if (SliceQuery.hasHints(mCurrentSlice, HINT_HORIZONTAL)) {
-                    return new GridRowView(getContext());
-                } else {
-                    return new RowView(getContext());
-                }
+                return isGrid ? new GridRowView(getContext()) : new RowView(getContext());
         }
         return new LargeTemplateView(getContext());
     }
@@ -325,47 +397,62 @@ public class SliceView extends ViewGroup implements Observer<Slice> {
             mCurrentView.resetView();
             return;
         }
+        ListContent lc = new ListContent(getContext(), mCurrentSlice);
+        if (!lc.isValid()) {
+            mCurrentView.resetView();
+            mCurrentView.setVisibility(View.GONE);
+            return;
+        }
         // TODO: Smarter mapping here from one state to the next.
         int mode = getMode();
-        boolean isSmallGridShowing = mCurrentView instanceof GridRowView;
-        boolean isGridSlice = SliceQuery.hasHints(mCurrentSlice, HINT_HORIZONTAL);
-        if (mMode == mCurrentView.getMode() && isGridSlice == isSmallGridShowing) {
-            mCurrentView.setSlice(mCurrentSlice);
-        } else {
+        boolean reuseView = mode == mCurrentView.getMode();
+        SliceItem header = lc.getHeaderItem();
+        boolean isSmallGrid = header != null && SliceQuery.hasHints(header, HINT_HORIZONTAL);
+        if (reuseView && mode == MODE_SMALL) {
+            reuseView = (mCurrentView instanceof GridRowView) == isSmallGrid;
+        }
+        if (!reuseView) {
             removeAllViews();
-            mCurrentView = createView(mode);
+            mCurrentView = createView(mode, isSmallGrid);
             if (mSliceObserver != null) {
                 mCurrentView.setSliceActionListener(mSliceObserver);
             }
             addView(mCurrentView.getView(), getChildLp(mCurrentView.getView()));
-            addView(mActions, getChildLp(mActions));
+            addView(mActionRow, getChildLp(mActionRow));
+            mCurrentView.setMode(mode);
         }
         // Scrolling
-        if (mode == MODE_LARGE) {
+        if (mode == MODE_LARGE && (mCurrentView instanceof LargeTemplateView)) {
             ((LargeTemplateView) mCurrentView).setScrollable(mIsScrollable);
         }
         // Styles
         mCurrentView.setStyle(mAttrs);
         mCurrentView.setTint(getTintColor());
+        mCurrentView.setVisibility(lc.isValid() ? View.VISIBLE : View.GONE);
         // Set the slice
-        SliceItem actionRow = SliceQuery.find(mCurrentSlice, FORMAT_SLICE,
-                HINT_ACTIONS,
-                null);
-        List<SliceItem> items = mCurrentSlice.getItems();
-        if (items.size() > 1 || (items.size() != 0 && items.get(0) != actionRow)) {
-            mCurrentView.getView().setVisibility(View.VISIBLE);
-            mCurrentView.setSlice(mCurrentSlice);
-        } else {
-            mCurrentView.getView().setVisibility(View.GONE);
+        mCurrentView.setSlice(mCurrentSlice);
+        updateActions();
+    }
+
+    private void updateActions() {
+        if (mActions == null || mActions.isEmpty()) {
+            // No actions, hide the row, clear out the view
+            mActionRow.setVisibility(View.GONE);
+            mCurrentView.setSliceActions(null);
+            return;
         }
-        // Deal with actions
-        boolean showActions = mShowActions && actionRow != null
-                && mode != MODE_SHORTCUT;
-        if (showActions) {
-            mActions.setActions(actionRow, getTintColor());
-            mActions.setVisibility(View.VISIBLE);
-        } else {
-            mActions.setVisibility(View.GONE);
+
+        // TODO: take priority attached to actions into account
+        if (mShowActions && mMode != MODE_SHORTCUT && mActions.size() >= 2) {
+            // Show in action row if available
+            mActionRow.setActions(mActions, getTintColor());
+            mActionRow.setVisibility(View.VISIBLE);
+            // Hide them on the template
+            mCurrentView.setSliceActions(null);
+        } else if (mActions.size() > 0) {
+            // Otherwise set them on the template
+            mCurrentView.setSliceActions(mActions);
+            mActionRow.setVisibility(View.GONE);
         }
     }
 
@@ -386,7 +473,8 @@ public class SliceView extends ViewGroup implements Observer<Slice> {
         if (child instanceof ShortcutView) {
             return new LayoutParams(mShortcutSize, mShortcutSize);
         } else {
-            return new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
+            return new LayoutParams(LayoutParams.MATCH_PARENT,
+                    LayoutParams.MATCH_PARENT);
         }
     }
 
@@ -397,8 +485,6 @@ public class SliceView extends ViewGroup implements Observer<Slice> {
     @RestrictTo(RestrictTo.Scope.LIBRARY)
     public static String modeToString(@SliceMode int mode) {
         switch(mode) {
-            case MODE_AUTO:
-                return "MODE AUTO";
             case MODE_SHORTCUT:
                 return "MODE SHORTCUT";
             case MODE_SMALL:

@@ -21,14 +21,12 @@ dependencies {
 
 android {
     sourceSets {
-        main.java.srcDirs = [
+        main.java.srcDirs += [
                 'common',
                 'jbmr2',
                 'kitkat',
                 'api21',
-                'src'
         ]
-        main.res.srcDir 'res'
     }
 }
 
@@ -39,6 +37,5 @@ supportLibrary {
     mavenGroup = LibraryGroups.SUPPORT
     inceptionYear = "2014"
     description = "Android Support Leanback v17"
-    legacySourceLocation = true
     minSdkVersion = 17
 }

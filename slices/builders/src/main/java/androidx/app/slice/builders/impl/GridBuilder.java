@@ -25,7 +25,7 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.annotation.RestrictTo;
 
-import androidx.app.slice.Slice;
+import androidx.app.slice.builders.SliceAction;
 
 /**
  * @hide
@@ -43,14 +43,36 @@ public interface GridBuilder {
     TemplateBuilderImpl createGridBuilder(Uri uri);
 
     /**
-     * Add a cell to this builder. Expected to be a builder from {@link #createGridBuilder};
+     * Add a cell to this builder. Expected to be a builder from {@link #createGridBuilder}.
      */
     void addCell(TemplateBuilderImpl impl);
 
     /**
-     * Builds a standalone slice of this grid builder (i.e. not contained within a List).
+     * If all content in a slice cannot be shown, the cell added here will be displayed where the
+     * content is cut off. This cell should have an affordance to take the user to an activity to
+     * see all of the content. Expected to be a builder from {@link #createGridBuilder}.
+     * <p>
+     * Only one see more affordance can be added, this throws {@link IllegalStateException} if
+     * a row or action has been previously added.
+     * </p>
      */
-    Slice buildIndividual();
+    void addSeeMoreCell(TemplateBuilderImpl impl);
+
+    /**
+     * If all content in a slice cannot be shown, a "see more" affordance will be displayed where
+     * the content is cut off. The action added here should take the user to an activity to see
+     * all of the content, and will be invoked when the "see more" affordance is tapped.
+     * <p>
+     * Only one see more affordance can be added, this throws {@link IllegalStateException} if
+     * a row or action has been previously added.
+     * </p>
+     */
+    void addSeeMoreAction(PendingIntent intent);
+
+    /**
+     * Sets the action to be invoked if the user taps on the main content of the template.
+     */
+    void setPrimaryAction(SliceAction action);
 
     /**
      */
@@ -94,33 +116,14 @@ public interface GridBuilder {
         void addTitleText(@Nullable CharSequence text, boolean isLoading);
 
         /**
-         * Adds an image to the cell that should be displayed as large as the cell allows.
-         * There can be at most one image, the first one added will be used, others will be ignored.
-         *
-         * @param image the image to display in the cell.
-         */
-        @NonNull
-        void addLargeImage(@NonNull Icon image);
-
-        /**
-         * Adds an image to the cell that should be displayed as large as the cell allows.
-         * There can be at most one image, the first one added will be used, others will be ignored.
-         * <p>
-         * When set to true, the parameter {@code isLoading} indicates that the app is doing work
-         * to load this content in the background, in this case the template displays a placeholder
-         * until updated.
-         */
-        @NonNull
-        void addLargeImage(@Nullable Icon image, boolean isLoading);
-
-        /**
          * Adds an image to the cell. There can be at most one image, the first one added
          * will be used, others will be ignored.
          *
          * @param image the image to display in the cell.
+         * @param imageMode the mode that image should be displayed in.
          */
         @NonNull
-        void addImage(@NonNull Icon image);
+        void addImage(@NonNull Icon image, int imageMode);
 
         /**
          * Adds an image to the cell. There can be at most one image, the first one added
@@ -131,7 +134,7 @@ public interface GridBuilder {
          * until updated.l.
          */
         @NonNull
-        void addImage(@NonNull Icon image, boolean isLoading);
+        void addImage(@NonNull Icon image, int imageMode, boolean isLoading);
 
         /**
          * Sets the action to be invoked if the user taps on this cell in the row.

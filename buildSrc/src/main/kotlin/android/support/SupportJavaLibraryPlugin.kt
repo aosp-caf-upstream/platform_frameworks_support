@@ -16,6 +16,7 @@
 
 package android.support
 
+import android.support.license.CheckExternalDependencyLicensesTask
 import net.ltgt.gradle.errorprone.ErrorProneBasePlugin
 import net.ltgt.gradle.errorprone.ErrorProneToolChain
 import org.gradle.api.JavaVersion
@@ -49,9 +50,11 @@ class SupportJavaLibraryPlugin : Plugin<Project> {
 
         project.apply(mapOf("plugin" to ErrorProneBasePlugin::class.java))
         val toolChain = ErrorProneToolChain.create(project)
+        project.dependencies.add("errorprone", ERROR_PRONE_VERSION)
         val compileTasks = project.tasks.withType(JavaCompile::class.java)
         compileTasks.all { it.configureWithErrorProne(toolChain) }
 
         setUpSourceJarTaskForJavaProject(project)
+        CheckExternalDependencyLicensesTask.configure(project)
     }
 }

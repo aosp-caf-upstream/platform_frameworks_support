@@ -17,13 +17,16 @@
 package androidx.app.slice.widget;
 
 import static android.app.slice.Slice.HINT_ACTIONS;
+import static android.app.slice.Slice.HINT_HORIZONTAL;
 import static android.app.slice.Slice.HINT_LIST_ITEM;
+import static android.app.slice.Slice.HINT_SHORTCUT;
 import static android.app.slice.Slice.SUBTYPE_COLOR;
 import static android.app.slice.SliceItem.FORMAT_ACTION;
 import static android.app.slice.SliceItem.FORMAT_INT;
 import static android.app.slice.SliceItem.FORMAT_SLICE;
 import static android.app.slice.SliceItem.FORMAT_TEXT;
 
+import android.content.Context;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.annotation.RestrictTo;
@@ -33,6 +36,7 @@ import java.util.List;
 
 import androidx.app.slice.Slice;
 import androidx.app.slice.SliceItem;
+import androidx.app.slice.SliceUtils;
 import androidx.app.slice.core.SliceQuery;
 
 /**
@@ -46,8 +50,10 @@ public class ListContent {
     private SliceItem mColorItem;
     private ArrayList<SliceItem> mRowItems = new ArrayList<>();
     private List<SliceItem> mSliceActions;
+    private Context mContext;
 
-    public ListContent(Slice slice) {
+    public ListContent(Context context, Slice slice) {
+        mContext = context;
         populate(slice);
     }
 
@@ -63,15 +69,11 @@ public class ListContent {
     /**
      * @return whether this row has content that is valid to display.
      */
-    public boolean populate(Slice slice) {
+    private boolean populate(Slice slice) {
         reset();
         mColorItem = SliceQuery.findSubtype(slice, FORMAT_INT, SUBTYPE_COLOR);
         // Find slice actions
-        SliceItem actionGroup = SliceQuery.find(slice, FORMAT_SLICE, HINT_ACTIONS, null);
-        if (actionGroup != null) {
-            // TODO: actually use the actions
-            mSliceActions = SliceQuery.findAll(actionGroup, FORMAT_ACTION, HINT_ACTIONS, null);
-        }
+        mSliceActions = SliceUtils.getSliceActions(slice);
         // Find header
         mHeaderItem = findHeaderItem(slice);
         if (mHeaderItem != null) {
@@ -97,6 +99,24 @@ public class ListContent {
             mHeaderItem = mRowItems.get(0);
         }
         return isValid();
+    }
+
+    /**
+     * @return the total height of all the rows contained in this list.
+     */
+    public int getListHeight() {
+        int height = 0;
+        for (int i = 0; i < mRowItems.size(); i++) {
+            SliceItem item = mRowItems.get(i);
+            if (item.hasHint(HINT_HORIZONTAL)) {
+                GridContent gc = new GridContent(mContext, item);
+                height += gc.getActualHeight();
+            } else {
+                RowContent rc = new RowContent(mContext, item, i == 0 /* isHeader */);
+                height += rc.getActualHeight();
+            }
+        }
+        return height;
     }
 
     /**
@@ -135,7 +155,8 @@ public class ListContent {
     @Nullable
     private static SliceItem findHeaderItem(@NonNull Slice slice) {
         // See if header is specified
-        SliceItem header = SliceQuery.find(slice, FORMAT_SLICE, null, HINT_LIST_ITEM);
+        String[] nonHints = new String[] {HINT_LIST_ITEM, HINT_SHORTCUT, HINT_ACTIONS};
+        SliceItem header = SliceQuery.find(slice, FORMAT_SLICE, null, nonHints);
         if (header != null && isValidHeader(header)) {
             return header;
         }
@@ -143,7 +164,8 @@ public class ListContent {
     }
 
     private static boolean isValidHeader(SliceItem sliceItem) {
-        if (FORMAT_SLICE.equals(sliceItem.getFormat()) && !sliceItem.hasHint(HINT_LIST_ITEM)) {
+        if (FORMAT_SLICE.equals(sliceItem.getFormat()) && !sliceItem.hasHint(HINT_LIST_ITEM)
+                && !sliceItem.hasHint(HINT_ACTIONS)) {
              // Minimum valid header is a slice with text
             SliceItem item = SliceQuery.find(sliceItem, FORMAT_TEXT, (String) null, null);
             return item != null;

@@ -19,16 +19,14 @@ dependencies {
 
 android {
     sourceSets {
-        main.java.srcDirs = [
+        main.java.srcDirs += [
                 'api21',
                 'api22',
                 'api23',
                 'api24',
                 'api26',
-                'java'
         ]
-        main.aidl.srcDirs = ['java']
-        main.res.srcDirs 'res', 'res-public'
+        main.res.srcDirs += 'src/main/res-public'
     }
 
     buildTypes.all {
@@ -43,5 +41,4 @@ supportLibrary {
     mavenGroup = LibraryGroups.SUPPORT
     inceptionYear = "2011"
     description = "The Support Library is a static library that you can add to your Android application in order to use APIs that are either not available for older platform versions or utility APIs that aren't a part of the framework APIs. Compatible on devices running API 14 or later."
-    legacySourceLocation = true
 }

@@ -23,6 +23,8 @@ import static android.app.slice.SliceItem.FORMAT_IMAGE;
 import static android.app.slice.SliceItem.FORMAT_INT;
 import static android.app.slice.SliceItem.FORMAT_TEXT;
 
+import static androidx.app.slice.widget.SliceView.MODE_LARGE;
+
 import android.annotation.TargetApi;
 import android.app.slice.Slice;
 import android.content.Context;
@@ -61,10 +63,10 @@ public class LargeSliceAdapter extends RecyclerView.Adapter<LargeSliceAdapter.Sl
     private final IdGenerator mIdGen = new IdGenerator();
     private final Context mContext;
     private List<SliceWrapper> mSlices = new ArrayList<>();
-
     private SliceView.OnSliceActionListener mSliceObserver;
     private int mColor;
     private AttributeSet mAttrs;
+    private List<SliceItem> mSliceActions;
 
     public LargeSliceAdapter(Context context) {
         mContext = context;
@@ -73,6 +75,16 @@ public class LargeSliceAdapter extends RecyclerView.Adapter<LargeSliceAdapter.Sl
 
     public void setSliceObserver(SliceView.OnSliceActionListener observer) {
         mSliceObserver = observer;
+    }
+
+    /**
+     * Sets the actions to display for this slice, this adjusts what's displayed in the header item.
+     */
+    public void setSliceActions(List<SliceItem> actions) {
+        mSliceActions = actions;
+        if (getItemCount() > 0) {
+            notifyItemChanged(0); // Header item (index 0) displays the actions
+        }
     }
 
     /**
@@ -128,24 +140,32 @@ public class LargeSliceAdapter extends RecyclerView.Adapter<LargeSliceAdapter.Sl
     public void onBindViewHolder(SliceViewHolder holder, int position) {
         SliceWrapper slice = mSlices.get(position);
         if (holder.mSliceView != null) {
+            final boolean isHeader = position == 0;
             holder.mSliceView.setTint(mColor);
             holder.mSliceView.setStyle(mAttrs);
-            holder.mSliceView.setSliceItem(slice.mItem, position == 0 /* isHeader */,
-                    position, mSliceObserver);
+            holder.mSliceView.setSliceItem(slice.mItem, isHeader, position, mSliceObserver);
+            if (isHeader && holder.mSliceView instanceof RowView) {
+                holder.mSliceView.setSliceActions(mSliceActions);
+            }
         }
     }
 
     private View inflateForType(int viewType) {
+        View v = new RowView(mContext);
         switch (viewType) {
             case TYPE_GRID:
-                return LayoutInflater.from(mContext).inflate(R.layout.abc_slice_grid, null);
+                v = LayoutInflater.from(mContext).inflate(R.layout.abc_slice_grid, null);
+                break;
             case TYPE_MESSAGE:
-                return LayoutInflater.from(mContext).inflate(R.layout.abc_slice_message, null);
+                v = LayoutInflater.from(mContext).inflate(R.layout.abc_slice_message, null);
+                break;
             case TYPE_MESSAGE_LOCAL:
-                return LayoutInflater.from(mContext).inflate(R.layout.abc_slice_message_local,
+                v = LayoutInflater.from(mContext).inflate(R.layout.abc_slice_message_local,
                         null);
+                break;
         }
-        return new RowView(mContext);
+        ((SliceChildView) v).setMode(MODE_LARGE);
+        return v;
     }
 
     protected static class SliceWrapper {

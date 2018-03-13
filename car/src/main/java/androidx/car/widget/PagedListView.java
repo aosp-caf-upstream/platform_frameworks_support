@@ -16,6 +16,8 @@
 
 package androidx.car.widget;
 
+import static android.support.annotation.RestrictTo.Scope.LIBRARY_GROUP;
+
 import android.content.Context;
 import android.content.res.Resources;
 import android.content.res.TypedArray;
@@ -31,8 +33,10 @@ import android.support.annotation.IdRes;
 import android.support.annotation.IntDef;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.annotation.RestrictTo;
 import android.support.annotation.UiThread;
 import android.support.annotation.VisibleForTesting;
+import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.AttributeSet;
@@ -165,8 +169,7 @@ public class PagedListView extends FrameLayout {
      */
     public interface DividerVisibilityManager {
         /**
-         * Given an item position, returns whether the divider coming after that item should be
-         * hidden.
+         * Given an item position, returns whether the divider below that item should be hidden.
          *
          * @param position item position inside the adapter.
          * @return true if divider is to be hidden, false if divider should be shown.
@@ -296,12 +299,6 @@ public class PagedListView extends FrameLayout {
             mRecyclerView.addItemDecoration(new TopOffsetDecoration(listContentTopMargin));
         }
 
-        // Set this to true so that this view consumes clicks events and views underneath
-        // don't receive this click event. Without this it's possible to click places in the
-        // view that don't capture the event, and as a result, elements visually hidden consume
-        // the event.
-        setClickable(true);
-
         // Set focusable false explicitly to handle the behavior change in Android O where
         // clickable view becomes focusable by default.
         setFocusable(false);
@@ -391,19 +388,24 @@ public class PagedListView extends FrameLayout {
     public void setGutter(@Gutter int gutter) {
         mGutter = gutter;
 
-        int startPadding = 0;
-        int endPadding = 0;
+        int startMargin = 0;
+        int endMargin = 0;
         if ((mGutter & Gutter.START) != 0) {
-            startPadding = mGutterSize;
+            startMargin = mGutterSize;
         }
         if ((mGutter & Gutter.END) != 0) {
-            endPadding = mGutterSize;
+            endMargin = mGutterSize;
         }
-        mRecyclerView.setPaddingRelative(startPadding, 0, endPadding, 0);
+        MarginLayoutParams layoutParams = (MarginLayoutParams) mRecyclerView.getLayoutParams();
+        layoutParams.setMarginStart(startMargin);
+        layoutParams.setMarginEnd(endMargin);
+        // requestLayout() isn't sufficient because we also need to resolveLayoutParams().
+        mRecyclerView.setLayoutParams(layoutParams);
 
         // If there's a gutter, set ClipToPadding to false so that CardView's shadow will still
         // appear outside of the padding.
-        mRecyclerView.setClipToPadding(startPadding == 0 && endPadding == 0);
+        mRecyclerView.setClipToPadding(startMargin == 0 && endMargin == 0);
+
     }
 
     /**
@@ -719,13 +721,21 @@ public class PagedListView extends FrameLayout {
         return position / mRowsPerPage;
     }
 
-    /** Scrolls the contents of the RecyclerView up a page. */
-    private void pageUp() {
+    /**
+     * Scrolls the contents of the RecyclerView up a page.
+     * @hide
+     */
+    @RestrictTo(LIBRARY_GROUP)
+    public void pageUp() {
         mRecyclerView.fling(0, FLING_UP_DISTANCE);
     }
 
-    /** Scrolls the contents of the RecyclerView down a page. */
-    private void pageDown() {
+    /**
+     * Scrolls the contents of the RecyclerView down a page.
+     * @hide
+     */
+    @RestrictTo(LIBRARY_GROUP)
+    public void pageDown() {
         mRecyclerView.fling(0, FLING_DOWN_DISTANCE);
     }
 
@@ -1057,8 +1067,9 @@ public class PagedListView extends FrameLayout {
             super.getItemOffsets(outRect, view, parent, state);
             int position = parent.getChildAdapterPosition(view);
 
-            // Skip offset for last item.
-            if (position == state.getItemCount() - 1) {
+            // Skip offset for last item except for GridLayoutManager.
+            if (position == state.getItemCount() - 1
+                    && !(parent.getLayoutManager() instanceof GridLayoutManager)) {
                 return;
             }
 
@@ -1111,7 +1122,7 @@ public class PagedListView extends FrameLayout {
 
         /** Updates the list divider color which may have changed due to a day night transition. */
         public void updateDividerColor() {
-            mPaint.setColor(mContext.getResources().getColor(R.color.car_list_divider));
+            mPaint.setColor(mContext.getResources().getColor(R.color.car_list_divider, null));
         }
 
         /** Sets {@link DividerVisibilityManager} on the DividerDecoration.*/
@@ -1121,50 +1132,69 @@ public class PagedListView extends FrameLayout {
 
         @Override
         public void onDrawOver(Canvas c, RecyclerView parent, RecyclerView.State state) {
-            // Draw a divider line between each item. No need to draw the line for the last item.
-            for (int i = 0, childCount = parent.getChildCount(); i < childCount - 1; i++) {
+            boolean usesGridLayoutManager = parent.getLayoutManager() instanceof GridLayoutManager;
+            for (int i = 0; i < parent.getChildCount(); i++) {
                 View container = parent.getChildAt(i);
-
-                // if divider should be hidden for this item, proceeds without drawing it
                 int itemPosition = parent.getChildAdapterPosition(container);
+
                 if (hideDividerForAdapterPosition(itemPosition)) {
                     continue;
                 }
 
-                View nextContainer = parent.getChildAt(i + 1);
-                int spacing = nextContainer.getTop() - container.getBottom();
-
-                View startChild =
-                        mDividerStartId != INVALID_RESOURCE_ID
-                                ? container.findViewById(mDividerStartId)
-                                : container;
-
-                View endChild =
-                        mDividerEndId != INVALID_RESOURCE_ID
-                                ? container.findViewById(mDividerEndId)
-                                : container;
-
-                if (startChild == null || endChild == null) {
+                View nextVerticalContainer;
+                if (usesGridLayoutManager) {
+                    // Find an item in next row to calculate vertical space.
+                    int lastItem = GridLayoutManagerUtils.getLastIndexOnSameRow(i, parent);
+                    nextVerticalContainer = parent.getChildAt(lastItem + 1);
+                } else {
+                    nextVerticalContainer = parent.getChildAt(i + 1);
+                }
+                if (nextVerticalContainer == null) {
+                    // Skip drawing divider for the last row in GridLayoutManager, or the last
+                    // item (presumably in LinearLayoutManager).
                     continue;
                 }
-
-                Rect containerRect = new Rect();
-                container.getGlobalVisibleRect(containerRect);
-
-                Rect startRect = new Rect();
-                startChild.getGlobalVisibleRect(startRect);
-
-                Rect endRect = new Rect();
-                endChild.getGlobalVisibleRect(endRect);
-
-                int left = container.getLeft() + mDividerStartMargin
-                        + (startRect.left - containerRect.left);
-                int right = container.getRight() - (endRect.right - containerRect.right);
-                int bottom = container.getBottom() + spacing / 2 + mDividerHeight / 2;
-                int top = bottom - mDividerHeight;
-
-                c.drawRect(left, top, right, bottom, mPaint);
+                int spacing = nextVerticalContainer.getTop() - container.getBottom();
+                drawDivider(c, container, spacing);
             }
+        }
+
+        /**
+         * Draws a divider under {@code container}.
+         *
+         * @param spacing between {@code container} and next view.
+         */
+        private void drawDivider(Canvas c, View container, int spacing) {
+            View startChild =
+                    mDividerStartId != INVALID_RESOURCE_ID
+                            ? container.findViewById(mDividerStartId)
+                            : container;
+
+            View endChild =
+                    mDividerEndId != INVALID_RESOURCE_ID
+                            ? container.findViewById(mDividerEndId)
+                            : container;
+
+            if (startChild == null || endChild == null) {
+                return;
+            }
+
+            Rect containerRect = new Rect();
+            container.getGlobalVisibleRect(containerRect);
+
+            Rect startRect = new Rect();
+            startChild.getGlobalVisibleRect(startRect);
+
+            Rect endRect = new Rect();
+            endChild.getGlobalVisibleRect(endRect);
+
+            int left = container.getLeft() + mDividerStartMargin
+                    + (startRect.left - containerRect.left);
+            int right = container.getRight() - (endRect.right - containerRect.right);
+            int bottom = container.getBottom() + spacing / 2 + mDividerHeight / 2;
+            int top = bottom - mDividerHeight;
+
+            c.drawRect(left, top, right, bottom, mPaint);
         }
 
         @Override
@@ -1172,16 +1202,14 @@ public class PagedListView extends FrameLayout {
                 RecyclerView.State state) {
             super.getItemOffsets(outRect, view, parent, state);
             int pos = parent.getChildAdapterPosition(view);
-
-            // Skip top offset when there is no divider above.
-            if (pos > 0 && !hideDividerForAdapterPosition(pos - 1)) {
-                outRect.top = mDividerHeight / 2;
+            if (hideDividerForAdapterPosition(pos)) {
+                return;
             }
-
-            // Skip bottom offset when there is no divider below.
-            if (pos < state.getItemCount() - 1 && !hideDividerForAdapterPosition(pos)) {
-                outRect.bottom = mDividerHeight / 2;
-            }
+            // Add an bottom offset to all items that should have divider, even when divider is not
+            // drawn for the bottom item(s).
+            // With GridLayoutManager it's difficult to tell whether a view is in the last row.
+            // This is to keep expected behavior consistent.
+            outRect.bottom = mDividerHeight;
         }
 
         private boolean hideDividerForAdapterPosition(int position) {
@@ -1205,9 +1233,13 @@ public class PagedListView extends FrameLayout {
                 RecyclerView.State state) {
             super.getItemOffsets(outRect, view, parent, state);
             int position = parent.getChildAdapterPosition(view);
-
-            // Only set the offset for the first item.
-            if (position == 0) {
+            if (parent.getLayoutManager() instanceof GridLayoutManager
+                    && position < GridLayoutManagerUtils.getFirstRowItemCount(parent)) {
+                // For GridLayoutManager, top offset should be set for all items in the first row.
+                // Otherwise the top items will be visually uneven.
+                outRect.top = mTopOffset;
+            } else if (position == 0) {
+                 // Only set the offset for the first item.
                 outRect.top = mTopOffset;
             }
         }
