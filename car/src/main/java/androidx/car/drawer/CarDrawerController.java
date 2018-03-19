@@ -19,13 +19,15 @@ package androidx.car.drawer;
 import android.content.Context;
 import android.content.res.Configuration;
 import android.os.Bundle;
-import android.support.annotation.AnimRes;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-import android.support.v4.widget.DrawerLayout;
-import android.support.v7.app.ActionBarDrawerToggle;
-import android.support.v7.widget.RecyclerView;
-import android.support.v7.widget.Toolbar;
+import androidx.annotation.AnimRes;
+import androidx.annotation.ColorInt;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.drawerlayout.widget.DrawerLayout;
+import androidx.appcompat.app.ActionBarDrawerToggle;
+import androidx.recyclerview.widget.RecyclerView;
+import androidx.appcompat.widget.Toolbar;
+import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.MenuItem;
 import android.view.View;
@@ -71,6 +73,9 @@ public class CarDrawerController {
     private final ProgressBar mProgressBar;
     private final View mDrawerContent;
 
+    @ColorInt private int mClosedDrawerHeaderColor;
+    @ColorInt private int mOpenDrawerHeaderColor;
+
     /**
      * Creates a {@link CarDrawerController} that will control the navigation of the drawer given by
      * {@code drawerLayout}.
@@ -98,7 +103,17 @@ public class CarDrawerController {
         mDrawerList.setMaxPages(PagedListView.ItemCap.UNLIMITED);
         mProgressBar = drawerLayout.findViewById(R.id.drawer_progress);
 
+        resolveThemeColors();
         setupDrawerToggling();
+    }
+
+    private void resolveThemeColors() {
+        TypedValue outValue = new TypedValue();
+        mContext.getTheme().resolveAttribute(R.attr.drawerOpenHeaderColor, outValue, true);
+        mOpenDrawerHeaderColor = mContext.getColor(outValue.resourceId);
+
+        mContext.getTheme().resolveAttribute(R.attr.drawerClosedHeaderColor, outValue, true);
+        mClosedDrawerHeaderColor = mContext.getColor(outValue.resourceId);
     }
 
     /**
@@ -225,10 +240,7 @@ public class CarDrawerController {
 
     /** Sets the title and arrow color of the drawer depending on if it is open or not. */
     private void updateTitleAndArrowColor(boolean drawerOpen) {
-        // When the drawer is open, use car_title, which resolves to appropriate color depending on
-        // day-night mode. When drawer is closed, we always use light color.
-        int titleColorResId = drawerOpen ? R.color.car_title : R.color.car_title_light;
-        int titleColor = mContext.getColor(titleColorResId);
+        int titleColor = drawerOpen ? mOpenDrawerHeaderColor : mClosedDrawerHeaderColor;
         mToolbar.setTitleTextColor(titleColor);
         mDrawerToggle.getDrawerArrowDrawable().setColor(titleColor);
     }
@@ -237,7 +249,7 @@ public class CarDrawerController {
      * Synchronizes the display of the drawer with its linked {@link DrawerLayout}.
      *
      * <p>This should be called from the associated Activity's
-     * {@link android.support.v7.app.AppCompatActivity#onPostCreate(Bundle)} method to synchronize
+     * {@link androidx.appcompat.app.AppCompatActivity#onPostCreate(Bundle)} method to synchronize
      * after teh DRawerLayout's instance state has been restored, and any other time when the
      * state may have diverged in such a way that this controller's associated
      * {@link ActionBarDrawerToggle} had not been notified.

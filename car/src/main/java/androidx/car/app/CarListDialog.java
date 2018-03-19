@@ -19,12 +19,12 @@ package androidx.car.app;
 import android.app.Dialog;
 import android.content.Context;
 import android.content.DialogInterface;
-import android.graphics.Color;
 import android.os.Bundle;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-import android.support.v7.widget.RecyclerView;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.recyclerview.widget.RecyclerView;
 import android.util.Log;
+import android.util.TypedValue;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
@@ -48,7 +48,7 @@ import androidx.car.widget.TextListItem;
  * fixed list of items. There is no affordance for setting titles or any other text.
  *
  * <p>Its functionality is similar to if a list has been set on
- * {@link android.support.v7.app.AlertDialog}, but is styled so that it is more appropriate for
+ * {@link androidx.appcompat.app.AlertDialog}, but is styled so that it is more appropriate for
  * displaying in vehicles.
  *
  * <p>Note that this dialog cannot be created with an empty list.
@@ -57,6 +57,7 @@ public class CarListDialog extends Dialog {
     private static final String TAG = "CarListDialog";
 
     private ListItemAdapter mAdapter;
+    private final int mInitialPosition;
     private PagedListView mList;
     private PagedScrollBarView mScrollBarView;
     private final DialogInterface.OnClickListener mOnClickListener;
@@ -75,8 +76,10 @@ public class CarListDialog extends Dialog {
                 }
             };
 
-    private CarListDialog(Context context, String[] items, OnClickListener listener) {
-        super(context);
+    private CarListDialog(Context context, String[] items, int initialPosition,
+            OnClickListener listener) {
+        super(context, getDialogTheme(context));
+        mInitialPosition = initialPosition;
         mOnClickListener = listener;
         initializeAdapter(items);
     }
@@ -106,10 +109,6 @@ public class CarListDialog extends Dialog {
         Window window = getWindow();
         window.setContentView(R.layout.car_list_dialog);
 
-        // By default, the decor background is white. Set this to be transparent so that
-        // the dialog can have rounded corners and will show the background.
-        window.getDecorView().setBackgroundColor(Color.TRANSPARENT);
-
         // Ensure that the dialog takes up the entire window. This is needed because the scrollbar
         // needs to be drawn off the dialog.
         WindowManager.LayoutParams layoutParams = window.getAttributes();
@@ -137,7 +136,13 @@ public class CarListDialog extends Dialog {
 
     private void initializeList() {
         mList = getWindow().findViewById(R.id.list);
+        mList.setMaxPages(PagedListView.UNLIMITED_PAGES);
         mList.setAdapter(mAdapter);
+
+        // The list will start at the 0 position, so no need to scroll.
+        if (mInitialPosition != 0) {
+            mList.snapToPosition(mInitialPosition);
+        }
 
         // Ensure that when the list is scrolled, the scrollbar updates to reflect the new position.
         mList.getRecyclerView().addOnScrollListener(new RecyclerView.OnScrollListener() {
@@ -258,11 +263,22 @@ public class CarListDialog extends Dialog {
     }
 
     /**
+     * Returns the style that has been assigned to {@code carDialogTheme} in the
+     * current theme that is inflating this dialog.
+     */
+    private static int getDialogTheme(Context context) {
+        TypedValue outValue = new TypedValue();
+        context.getTheme().resolveAttribute(R.attr.carDialogTheme, outValue, true);
+        return outValue.resourceId;
+    }
+
+    /**
      * Builder class that can be used to create a {@link CarListDialog} by configuring the
      * options for the list and behavior of the dialog.
      */
     public static class Builder {
         private final Context mContext;
+        private int mInitialPosition;
         private String[] mItems;
         private DialogInterface.OnClickListener mOnClickListener;
 
@@ -304,6 +320,21 @@ public class CarListDialog extends Dialog {
 
             mItems = items;
             mOnClickListener = onClickListener;
+            return this;
+        }
+
+        /**
+         * Sets the initial position in the list that the {@code CarListDialog} will start at. When
+         * the dialog is created, the list will animate to the given position.
+         *
+         * @param initialPosition The initial position in the list to display.
+         * @return This {@code Builder} object to allow for chaining of calls.
+         */
+        public Builder setInitialPosition(int initialPosition) {
+            if (initialPosition < 0) {
+                throw new IllegalArgumentException("Initial position cannot be negative.");
+            }
+            mInitialPosition = initialPosition;
             return this;
         }
 
@@ -361,7 +392,16 @@ public class CarListDialog extends Dialog {
                         "CarListDialog must be created with a non-empty list.");
             }
 
-            CarListDialog dialog = new CarListDialog(mContext, mItems, mOnClickListener);
+            if (mInitialPosition >= mItems.length) {
+                throw new IllegalStateException("Initial position is greater than the number of "
+                        + "items in the list.");
+            }
+
+            CarListDialog dialog = new CarListDialog(
+                    mContext,
+                    mItems,
+                    mInitialPosition,
+                    mOnClickListener);
 
             dialog.setCancelable(mCancelable);
             dialog.setCanceledOnTouchOutside(mCancelable);
@@ -376,10 +416,10 @@ public class CarListDialog extends Dialog {
          * and immediately displays the dialog.
          *
          * <p>Calling this method is functionally identical to:
-         * <pre>
-         *     CarAlertDialog dialog = new CarAlertDialog.Builder().create();
-         *     dialog.show();
-         * </pre>
+         * <pre>{@code
+         * CarAlertDialog dialog = new CarAlertDialog.Builder().create();
+         * dialog.show();
+         * }</pre>
          */
         public CarListDialog show() {
             CarListDialog dialog = create();
