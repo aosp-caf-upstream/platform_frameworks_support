@@ -22,9 +22,10 @@ import android.car.drivingstate.CarUxRestrictions;
 import android.content.Context;
 import android.content.res.Resources;
 import android.graphics.drawable.Drawable;
-import android.support.annotation.DrawableRes;
-import android.support.annotation.IntDef;
-import android.support.v7.widget.RecyclerView;
+import androidx.annotation.DrawableRes;
+import androidx.annotation.IntDef;
+import androidx.annotation.StyleRes;
+import androidx.recyclerview.widget.RecyclerView;
 import android.text.TextUtils;
 import android.view.View;
 import android.view.ViewGroup;
@@ -174,6 +175,20 @@ public class TextListItem extends ListItem<TextListItem.ViewHolder> {
         for (ViewBinder binder : mBinders) {
             binder.bind(viewHolder);
         }
+    }
+
+    /** Sets the title text appearance from the specified style resource. */
+    @Override
+    void setTitleTextAppearance(@StyleRes int titleTextAppearance) {
+        super.setTitleTextAppearance(titleTextAppearance);
+        setTextContent();
+    }
+
+    /** Sets the body text appearance from the specified style resource. */
+    @Override
+    void setBodyTextAppearance(@StyleRes int bodyTextAppearance) {
+        super.setBodyTextAppearance(bodyTextAppearance);
+        setTextContent();
     }
 
     private void hideSubViews(ViewHolder vh) {
@@ -341,13 +356,13 @@ public class TextListItem extends ListItem<TextListItem.ViewHolder> {
 
         if (mIsBodyPrimary) {
             mBinders.add(vh -> {
-                vh.getTitle().setTextAppearance(R.style.TextAppearance_Car_Body2);
-                vh.getBody().setTextAppearance(R.style.TextAppearance_Car_Body1);
+                vh.getTitle().setTextAppearance(getBodyTextAppearance());
+                vh.getBody().setTextAppearance(getTitleTextAppearance());
             });
         } else {
             mBinders.add(vh -> {
-                vh.getTitle().setTextAppearance(R.style.TextAppearance_Car_Body1);
-                vh.getBody().setTextAppearance(R.style.TextAppearance_Car_Body2);
+                vh.getTitle().setTextAppearance(getTitleTextAppearance());
+                vh.getBody().setTextAppearance(getBodyTextAppearance());
             });
         }
     }
@@ -762,7 +777,7 @@ public class TextListItem extends ListItem<TextListItem.ViewHolder> {
          * @param restrictions current car UX restrictions.
          */
         @Override
-        public void complyWithUxRestrictions(CarUxRestrictions restrictions) {
+        void complyWithUxRestrictions(CarUxRestrictions restrictions) {
             CarUxRestrictionsUtils.comply(itemView.getContext(), restrictions, getBody());
         }
 

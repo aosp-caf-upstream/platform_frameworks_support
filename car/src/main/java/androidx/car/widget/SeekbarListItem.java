@@ -21,10 +21,10 @@ import static java.lang.annotation.RetentionPolicy.SOURCE;
 import android.car.drivingstate.CarUxRestrictions;
 import android.content.Context;
 import android.graphics.drawable.Drawable;
-import android.support.annotation.DrawableRes;
-import android.support.annotation.IdRes;
-import android.support.annotation.IntDef;
-import android.support.annotation.Nullable;
+import androidx.annotation.DrawableRes;
+import androidx.annotation.IdRes;
+import androidx.annotation.IntDef;
+import androidx.annotation.Nullable;
 import android.text.TextUtils;
 import android.view.View;
 import android.view.ViewGroup;
@@ -272,7 +272,7 @@ public class SeekbarListItem extends ListItem<SeekbarListItem.ViewHolder> {
             if (!TextUtils.isEmpty(mText)) {
                 vh.getText().setVisibility(View.VISIBLE);
                 vh.getText().setText(mText);
-                vh.getText().setTextAppearance(R.style.TextAppearance_Car_Body1);
+                vh.getText().setTextAppearance(getTitleTextAppearance());
             }
         });
     }
@@ -520,7 +520,7 @@ public class SeekbarListItem extends ListItem<SeekbarListItem.ViewHolder> {
         }
 
         @Override
-        public void complyWithUxRestrictions(CarUxRestrictions restrictions) {
+        void complyWithUxRestrictions(CarUxRestrictions restrictions) {
             CarUxRestrictionsUtils.comply(itemView.getContext(), restrictions, getText());
         }
 

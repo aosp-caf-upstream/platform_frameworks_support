@@ -16,11 +16,11 @@
 
 package com.example.android.supportv7.widget.selection.fancy;
 
-import static android.support.v4.util.Preconditions.checkArgument;
+import static androidx.core.util.Preconditions.checkArgument;
 
 import android.content.Context;
 import android.net.Uri;
-import android.support.v7.widget.RecyclerView;
+import androidx.recyclerview.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -29,8 +29,8 @@ import android.widget.LinearLayout;
 import com.example.android.supportv7.Cheeses;
 import com.example.android.supportv7.R;
 
-import androidx.widget.recyclerview.selection.ItemKeyProvider;
-import androidx.widget.recyclerview.selection.SelectionTracker;
+import androidx.recyclerview.selection.ItemKeyProvider;
+import androidx.recyclerview.selection.SelectionTracker;
 
 final class FancySelectionDemoAdapter extends RecyclerView.Adapter<FancyHolder> {
 

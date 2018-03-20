@@ -24,10 +24,12 @@ import android.arch.persistence.room.PrimaryKey
 import android.arch.persistence.room.Query
 import android.arch.persistence.room.ext.CommonTypeNames
 import android.arch.persistence.room.ext.LifecyclesTypeNames
+import android.arch.persistence.room.ext.PagingTypeNames
 import android.arch.persistence.room.ext.hasAnnotation
 import android.arch.persistence.room.ext.typeName
 import android.arch.persistence.room.parser.Table
 import android.arch.persistence.room.processor.ProcessorErrors.CANNOT_FIND_QUERY_RESULT_ADAPTER
+import android.arch.persistence.room.solver.query.result.DataSourceFactoryQueryResultBinder
 import android.arch.persistence.room.solver.query.result.LiveDataQueryResultBinder
 import android.arch.persistence.room.solver.query.result.PojoRowAdapter
 import android.arch.persistence.room.solver.query.result.SingleEntityQueryResultAdapter
@@ -56,6 +58,7 @@ import org.hamcrest.CoreMatchers.not
 import org.hamcrest.CoreMatchers.notNullValue
 import org.hamcrest.CoreMatchers.nullValue
 import org.hamcrest.MatcherAssert.assertThat
+import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
@@ -119,6 +122,7 @@ class QueryMethodProcessorTest(val enableVerification: Boolean) {
             assertThat(parsedQuery.parameters.size, `is`(1))
             val param = parsedQuery.parameters.first()
             assertThat(param.name, `is`("x"))
+            assertThat(param.sqlName, `is`("x"))
             assertThat(param.type,
                     `is`(invocation.processingEnv.typeUtils.getPrimitiveType(INT) as TypeMirror))
         }.compilesWithoutError()
@@ -136,6 +140,7 @@ class QueryMethodProcessorTest(val enableVerification: Boolean) {
             assertThat(parsedQuery.parameters.size, `is`(1))
             val param = parsedQuery.parameters.first()
             assertThat(param.name, `is`("ids"))
+            assertThat(param.sqlName, `is`("ids"))
             val types = invocation.processingEnv.typeUtils
             assertThat(param.type,
                     `is`(types.getArrayType(types.getPrimitiveType(INT)) as TypeMirror))
@@ -294,8 +299,10 @@ class QueryMethodProcessorTest(val enableVerification: Boolean) {
     fun testLiveDataWithWithClause() {
         singleQueryMethod(
                 """
-                @Query("WITH RECURSIVE tempTable(n, fact) AS (SELECT 0, 1 UNION ALL SELECT n+1, (n+1)*fact FROM tempTable WHERE n < 9) SELECT fact FROM tempTable, User")
-                abstract public ${LifecyclesTypeNames.LIVE_DATA}<${CommonTypeNames.LIST}<Integer>> getFactorialLiveData();
+                @Query("WITH RECURSIVE tempTable(n, fact) AS (SELECT 0, 1 UNION ALL SELECT n+1,"
+                + " (n+1)*fact FROM tempTable WHERE n < 9) SELECT fact FROM tempTable, User")
+                abstract public ${LifecyclesTypeNames.LIVE_DATA}<${CommonTypeNames.LIST}<Integer>>
+                getFactorialLiveData();
                 """) { parsedQuery, _ ->
             assertThat(parsedQuery.query.tables, hasItem(Table("User", "User")))
             assertThat(parsedQuery.query.tables,
@@ -320,8 +327,10 @@ class QueryMethodProcessorTest(val enableVerification: Boolean) {
     fun testLiveDataWithWithClauseAndNothingToObserve() {
         singleQueryMethod(
                 """
-                @Query("WITH RECURSIVE tempTable(n, fact) AS (SELECT 0, 1 UNION ALL SELECT n+1, (n+1)*fact FROM tempTable WHERE n < 9) SELECT fact FROM tempTable")
-                abstract public ${LifecyclesTypeNames.LIVE_DATA}<${CommonTypeNames.LIST}<Integer>> getFactorialLiveData();
+                @Query("WITH RECURSIVE tempTable(n, fact) AS (SELECT 0, 1 UNION ALL SELECT n+1,"
+                + " (n+1)*fact FROM tempTable WHERE n < 9) SELECT fact FROM tempTable")
+                abstract public ${LifecyclesTypeNames.LIVE_DATA}<${CommonTypeNames.LIST}<Integer>>
+                getFactorialLiveData();
                 """) { _, _ ->
             // do nothing
         }.failsToCompile()
@@ -442,6 +451,48 @@ class QueryMethodProcessorTest(val enableVerification: Boolean) {
         ) { _, _ ->
         }.failsToCompile()
                 .withErrorContaining(ProcessorErrors.DELETION_METHODS_MUST_RETURN_VOID_OR_INT)
+    }
+
+    @Test
+    fun testDataSourceFactoryQuery() {
+        singleQueryMethod(
+                """
+                @Query("select name from user")
+                abstract ${PagingTypeNames.DATA_SOURCE_FACTORY}<Integer, String>
+                nameDataSourceFactory();
+                """
+        ) { parsedQuery, _ ->
+            assertThat(parsedQuery.returnType.typeName(),
+                    `is`(ParameterizedTypeName.get(PagingTypeNames.DATA_SOURCE_FACTORY,
+                            Integer::class.typeName(), String::class.typeName()) as TypeName))
+            assertThat(parsedQuery.queryResultBinder,
+                    instanceOf(DataSourceFactoryQueryResultBinder::class.java))
+            val tableNames =
+                    (parsedQuery.queryResultBinder as DataSourceFactoryQueryResultBinder)
+                            .positionalDataSourceQueryResultBinder.tableNames
+            assertEquals(setOf("user"), tableNames)
+        }.compilesWithoutError()
+    }
+
+    @Test
+    fun testMultiTableDataSourceFactoryQuery() {
+        singleQueryMethod(
+                """
+                @Query("select name from User u LEFT OUTER JOIN Book b ON u.uid == b.uid")
+                abstract ${PagingTypeNames.DATA_SOURCE_FACTORY}<Integer, String>
+                nameDataSourceFactory();
+                """
+        ) { parsedQuery, _ ->
+            assertThat(parsedQuery.returnType.typeName(),
+                    `is`(ParameterizedTypeName.get(PagingTypeNames.DATA_SOURCE_FACTORY,
+                            Integer::class.typeName(), String::class.typeName()) as TypeName))
+            assertThat(parsedQuery.queryResultBinder,
+                    instanceOf(DataSourceFactoryQueryResultBinder::class.java))
+            val tableNames =
+                    (parsedQuery.queryResultBinder as DataSourceFactoryQueryResultBinder)
+                            .positionalDataSourceQueryResultBinder.tableNames
+            assertEquals(setOf("User", "Book"), tableNames)
+        }.compilesWithoutError()
     }
 
     @Test
@@ -590,7 +641,10 @@ class QueryMethodProcessorTest(val enableVerification: Boolean) {
                                 unusedFields = listOf(createField("nameX"),
                                         createField("lastNameX")),
                                 allColumns = listOf("name", "lastName"),
-                                allFields = listOf(createField("nameX"), createField("lastNameX"))
+                                allFields = listOf(
+                                        createField("nameX"),
+                                        createField("lastNameX")
+                                )
                         )
                 )
     }
@@ -728,7 +782,7 @@ class QueryMethodProcessorTest(val enableVerification: Boolean) {
         return assertAbout(JavaSourcesSubjectFactory.javaSources())
                 .that(listOf(JavaFileObjects.forSourceString("foo.bar.MyClass",
                         DAO_PREFIX + input.joinToString("\n") + DAO_SUFFIX
-                ), COMMON.LIVE_DATA, COMMON.COMPUTABLE_LIVE_DATA, COMMON.USER))
+                ), COMMON.LIVE_DATA, COMMON.COMPUTABLE_LIVE_DATA, COMMON.USER, COMMON.BOOK))
                 .processedWith(TestProcessor.builder()
                         .forAnnotations(Query::class, Dao::class, ColumnInfo::class,
                                 Entity::class, PrimaryKey::class)

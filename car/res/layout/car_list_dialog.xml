@@ -31,7 +31,7 @@ limitations under the License.
         android:layout_marginTop="@dimen/car_padding_4"
         android:layout_marginBottom="@dimen/car_padding_4"
         android:elevation="@dimen/car_dialog_elevation"
-        app:cardBackgroundColor="@color/car_card"
+        app:cardBackgroundColor="?attr/dialogBackgroundColor"
         app:cardCornerRadius="@dimen/car_radius_3">
 
         <!-- Hide the scrollbar for this PagedListView because it will be implemented by
@@ -40,7 +40,10 @@ limitations under the License.
             android:id="@+id/list"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:theme="?attr/dialogListTheme"
             app:gutter="none"
+            app:dividerStartMargin="@dimen/car_keyline_1"
+            app:dividerEndMargin="@dimen/car_keyline_1"
             app:showPagedListViewDivider="true"
             app:scrollBarEnabled="false" />
     </androidx.car.widget.ColumnCardView>
