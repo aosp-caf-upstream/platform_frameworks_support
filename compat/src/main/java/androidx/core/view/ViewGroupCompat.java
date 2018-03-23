@@ -17,13 +17,13 @@
 package androidx.core.view;
 
 import android.os.Build;
-import androidx.annotation.NonNull;
-import androidx.annotation.RequiresApi;
-import androidx.core.R;
-import androidx.core.view.ViewCompat.ScrollAxis;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.accessibility.AccessibilityEvent;
+
+import androidx.annotation.NonNull;
+import androidx.core.R;
+import androidx.core.view.ViewCompat.ScrollAxis;
 
 /**
  * Helper for accessing features in {@link ViewGroup}.
@@ -45,76 +45,6 @@ public final class ViewGroupCompat {
      * such as shadows and glows, to be drawn.
      */
     public static final int LAYOUT_MODE_OPTICAL_BOUNDS = 1;
-
-    static class ViewGroupCompatBaseImpl {
-        public int getLayoutMode(ViewGroup group) {
-            return LAYOUT_MODE_CLIP_BOUNDS;
-        }
-
-        public void setLayoutMode(ViewGroup group, int mode) {
-            // no-op, didn't exist. Views only support clip bounds.
-        }
-
-        public void setTransitionGroup(ViewGroup group, boolean isTransitionGroup) {
-            group.setTag(R.id.tag_transition_group, isTransitionGroup);
-        }
-
-        public boolean isTransitionGroup(ViewGroup group) {
-            Boolean explicit = (Boolean) group.getTag(R.id.tag_transition_group);
-            return (explicit != null && explicit)
-                    || group.getBackground() != null
-                    || ViewCompat.getTransitionName(group) != null;
-        }
-
-        public int getNestedScrollAxes(ViewGroup group) {
-            if (group instanceof NestedScrollingParent) {
-                return ((NestedScrollingParent) group).getNestedScrollAxes();
-            }
-            return ViewCompat.SCROLL_AXIS_NONE;
-        }
-    }
-
-    @RequiresApi(18)
-    static class ViewGroupCompatApi18Impl extends ViewGroupCompatBaseImpl {
-        @Override
-        public int getLayoutMode(ViewGroup group) {
-            return group.getLayoutMode();
-        }
-
-        @Override
-        public void setLayoutMode(ViewGroup group, int mode) {
-            group.setLayoutMode(mode);
-        }
-    }
-
-    @RequiresApi(21)
-    static class ViewGroupCompatApi21Impl extends ViewGroupCompatApi18Impl {
-        @Override
-        public void setTransitionGroup(ViewGroup group, boolean isTransitionGroup) {
-            group.setTransitionGroup(isTransitionGroup);
-        }
-
-        @Override
-        public boolean isTransitionGroup(ViewGroup group) {
-            return group.isTransitionGroup();
-        }
-
-        @Override
-        public int getNestedScrollAxes(ViewGroup group) {
-            return group.getNestedScrollAxes();
-        }
-    }
-
-    static final ViewGroupCompatBaseImpl IMPL;
-    static {
-        if (Build.VERSION.SDK_INT >= 21) {
-            IMPL = new ViewGroupCompatApi21Impl();
-        } else if (Build.VERSION.SDK_INT >= 18) {
-            IMPL = new ViewGroupCompatApi18Impl();
-        } else {
-            IMPL = new ViewGroupCompatBaseImpl();
-        }
-    }
 
     /*
      * Hide the constructor.
@@ -180,8 +110,11 @@ public final class ViewGroupCompat {
      *
      * @see #setLayoutMode(ViewGroup, int)
      */
-    public static int getLayoutMode(ViewGroup group) {
-        return IMPL.getLayoutMode(group);
+    public static int getLayoutMode(@NonNull ViewGroup group) {
+        if (Build.VERSION.SDK_INT >= 18) {
+            return group.getLayoutMode();
+        }
+        return LAYOUT_MODE_CLIP_BOUNDS;
     }
 
     /**
@@ -193,8 +126,10 @@ public final class ViewGroupCompat {
      *
      * @see #getLayoutMode(ViewGroup)
      */
-    public static void setLayoutMode(ViewGroup group, int mode) {
-        IMPL.setLayoutMode(group, mode);
+    public static void setLayoutMode(@NonNull ViewGroup group, int mode) {
+        if (Build.VERSION.SDK_INT >= 18) {
+            group.setLayoutMode(mode);
+        }
     }
 
     /**
@@ -205,8 +140,12 @@ public final class ViewGroupCompat {
      *                          only its children. If true, the entire ViewGroup will transition
      *                          together.
      */
-    public static void setTransitionGroup(ViewGroup group, boolean isTransitionGroup) {
-        IMPL.setTransitionGroup(group, isTransitionGroup);
+    public static void setTransitionGroup(@NonNull ViewGroup group, boolean isTransitionGroup) {
+        if (Build.VERSION.SDK_INT >= 21) {
+            group.setTransitionGroup(isTransitionGroup);
+        } else {
+            group.setTag(R.id.tag_transition_group, isTransitionGroup);
+        }
     }
 
     /**
@@ -214,8 +153,14 @@ public final class ViewGroupCompat {
      * when executing an Activity transition. If this is false, child elements will move
      * individually during the transition.
      */
-    public static boolean isTransitionGroup(ViewGroup group) {
-        return IMPL.isTransitionGroup(group);
+    public static boolean isTransitionGroup(@NonNull ViewGroup group) {
+        if (Build.VERSION.SDK_INT >= 21) {
+            return group.isTransitionGroup();
+        }
+        Boolean explicit = (Boolean) group.getTag(R.id.tag_transition_group);
+        return (explicit != null && explicit)
+                || group.getBackground() != null
+                || ViewCompat.getTransitionName(group) != null;
     }
 
     /**
@@ -231,7 +176,14 @@ public final class ViewGroupCompat {
      * @see ViewCompat#SCROLL_AXIS_NONE
      */
     @ScrollAxis
+    @SuppressWarnings("RedundantCast") // Intentionally invoking interface method.
     public static int getNestedScrollAxes(@NonNull ViewGroup group) {
-        return IMPL.getNestedScrollAxes(group);
+        if (Build.VERSION.SDK_INT >= 21) {
+            return group.getNestedScrollAxes();
+        }
+        if (group instanceof NestedScrollingParent) {
+            return ((NestedScrollingParent) group).getNestedScrollAxes();
+        }
+        return ViewCompat.SCROLL_AXIS_NONE;
     }
 }

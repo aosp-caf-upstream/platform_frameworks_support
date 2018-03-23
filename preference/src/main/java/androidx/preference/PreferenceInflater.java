@@ -19,11 +19,12 @@ package androidx.preference;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.XmlResourceParser;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import android.util.AttributeSet;
 import android.util.Xml;
 import android.view.InflateException;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
@@ -62,8 +63,15 @@ class PreferenceInflater {
 
     private void init(PreferenceManager preferenceManager) {
         mPreferenceManager = preferenceManager;
-        setDefaultPackages(new String[] {"androidx.preference.",
-                "androidx.preference."});
+
+        // Handle legacy case for de-Jetification. These preference classes were originally
+        // in separate packages, so we need two defaults when de-Jetified.
+        setDefaultPackages(new String[] {
+                // Preference was originally in android.support.v7.preference.
+                Preference.class.getPackage().getName() + ".",
+                // SwitchPreference was originally in android.support.v14.preference.
+                SwitchPreference.class.getPackage().getName() + "."
+        });
     }
 
     /**

@@ -37,6 +37,7 @@ import static android.app.slice.SliceItem.FORMAT_TEXT;
 import static android.app.slice.SliceItem.FORMAT_TIMESTAMP;
 
 import static androidx.slice.SliceConvert.unwrap;
+import static androidx.slice.core.SliceHints.HINT_KEY_WORDS;
 
 import android.app.PendingIntent;
 import android.app.RemoteInput;
@@ -46,6 +47,7 @@ import android.graphics.drawable.Icon;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Parcelable;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
@@ -53,12 +55,12 @@ import androidx.annotation.RestrictTo;
 import androidx.annotation.RestrictTo.Scope;
 import androidx.annotation.StringDef;
 import androidx.core.os.BuildCompat;
+import androidx.slice.compat.SliceProviderCompat;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-
-import androidx.slice.compat.SliceProviderCompat;
+import java.util.Set;
 
 /**
  * A slice is a piece of app content and actions that can be surfaced outside of the app.
@@ -82,7 +84,7 @@ public final class Slice {
     @RestrictTo(Scope.LIBRARY)
     @StringDef({HINT_TITLE, HINT_LIST, HINT_LIST_ITEM, HINT_LARGE, HINT_ACTIONS, HINT_SELECTED,
             HINT_HORIZONTAL, HINT_NO_TINT, HINT_PARTIAL, HINT_SUMMARY, HINT_SEE_MORE,
-            HINT_SHORTCUT})
+            HINT_SHORTCUT, HINT_KEY_WORDS})
     public @interface SliceHint{ }
 
     private final SliceItem[] mItems;
@@ -440,7 +442,7 @@ public final class Slice {
     @SuppressWarnings("NewApi") // Lint doesn't understand BuildCompat.
     @Nullable
     public static Slice bindSlice(Context context, @NonNull Uri uri,
-            List<SliceSpec> supportedSpecs) {
+            Set<SliceSpec> supportedSpecs) {
         if (BuildCompat.isAtLeastP()) {
             return callBindSlice(context, uri, supportedSpecs);
         } else {
@@ -450,8 +452,8 @@ public final class Slice {
 
     @RequiresApi(28)
     private static Slice callBindSlice(Context context, Uri uri,
-            List<SliceSpec> supportedSpecs) {
+            Set<SliceSpec> supportedSpecs) {
         return SliceConvert.wrap(context.getSystemService(SliceManager.class)
-                .bindSlice(uri, unwrap(supportedSpecs)));
+                .bindSlice(uri, new ArrayList<>(unwrap(supportedSpecs))));
     }
 }

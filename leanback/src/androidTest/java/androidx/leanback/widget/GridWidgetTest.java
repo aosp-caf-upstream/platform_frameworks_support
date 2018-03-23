@@ -41,12 +41,6 @@ import android.support.test.filters.LargeTest;
 import android.support.test.filters.SdkSuppress;
 import android.support.test.rule.ActivityTestRule;
 import android.support.test.runner.AndroidJUnit4;
-import androidx.leanback.test.R;
-import androidx.leanback.testutils.PollingCheck;
-import androidx.core.view.accessibility.AccessibilityNodeInfoCompat;
-import androidx.recyclerview.widget.DefaultItemAnimator;
-import androidx.recyclerview.widget.RecyclerView;
-import androidx.recyclerview.widget.RecyclerViewAccessibilityDelegate;
 import android.text.Selection;
 import android.text.Spannable;
 import android.util.DisplayMetrics;
@@ -57,6 +51,13 @@ import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+
+import androidx.core.view.accessibility.AccessibilityNodeInfoCompat;
+import androidx.leanback.test.R;
+import androidx.leanback.testutils.PollingCheck;
+import androidx.recyclerview.widget.DefaultItemAnimator;
+import androidx.recyclerview.widget.RecyclerView;
+import androidx.recyclerview.widget.RecyclerViewAccessibilityDelegate;
 
 import org.junit.After;
 import org.junit.Rule;
@@ -1387,6 +1388,150 @@ public class GridWidgetTest {
         });
         waitForScrollIdle();
         assertEquals(leftEdge, mGridView.getLayoutManager().findViewByPosition(0).getLeft());
+    }
+
+    void testSetSelectedPosition(final boolean inSmoothScroll, final boolean layoutRequested,
+            final boolean viewVisible, final boolean smooth,
+            final boolean resultLayoutRequested, final boolean resultSmoothScroller,
+            final int resultScrollState) throws Throwable {
+        Intent intent = new Intent();
+        intent.putExtra(GridActivity.EXTRA_LAYOUT_RESOURCE_ID, R.layout.vertical_linear);
+        intent.putExtra(GridActivity.EXTRA_NUM_ITEMS, 1500);
+        intent.putExtra(GridActivity.EXTRA_STAGGERED, false);
+        mNumRows = 1;
+        initActivity(intent);
+        mOrientation = BaseGridView.VERTICAL;
+
+        if (inSmoothScroll) {
+            setSelectedPositionSmooth(500);
+        }
+        mActivityTestRule.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                if (layoutRequested) {
+                    mGridView.requestLayout();
+                }
+                final int position;
+                if (viewVisible) {
+                    position = mGridView.getChildAdapterPosition(mGridView.getChildAt(
+                            mGridView.getChildCount() - 1));
+                } else {
+                    position = 1000;
+                }
+                if (smooth) {
+                    mGridView.setSelectedPositionSmooth(position);
+                } else {
+                    mGridView.setSelectedPosition(position);
+                }
+                assertEquals("isLayoutRequested", resultLayoutRequested,
+                        mGridView.isLayoutRequested());
+                assertEquals("isSmoothScrolling", resultSmoothScroller,
+                        mGridView.getLayoutManager().isSmoothScrolling());
+                if (!resultSmoothScroller) {
+                    // getScrollState() only matters when is not running smoothScroller
+                    assertEquals("getScrollState", resultScrollState,
+                            mGridView.getScrollState());
+                }
+                assertEquals("isLayoutRequested", resultLayoutRequested,
+                        mGridView.isLayoutRequested());
+            }
+        });
+    }
+
+    @Test
+    public void testSelectedPosition01() throws Throwable {
+        testSetSelectedPosition(false, false, false, false,
+                true, false, RecyclerView.SCROLL_STATE_IDLE);
+    }
+
+    @Test
+    public void testSelectedPosition02() throws Throwable {
+        testSetSelectedPosition(false, false, false, true,
+                false, true, RecyclerView.SCROLL_STATE_IDLE);
+    }
+
+    @Test
+    public void testSelectedPosition03() throws Throwable {
+        testSetSelectedPosition(false, false, true, false,
+                false, false, RecyclerView.SCROLL_STATE_IDLE);
+    }
+
+    @Test
+    public void testSelectedPosition04() throws Throwable {
+        testSetSelectedPosition(false, false, true, true,
+                false, false, RecyclerView.SCROLL_STATE_SETTLING);
+    }
+
+    @Test
+    public void testSelectedPosition05() throws Throwable {
+        testSetSelectedPosition(false, true, false, false,
+                true, false, RecyclerView.SCROLL_STATE_IDLE);
+    }
+
+    @Test
+    public void testSelectedPosition06() throws Throwable {
+        testSetSelectedPosition(false, true, false, true,
+                true, false, RecyclerView.SCROLL_STATE_IDLE);
+    }
+
+    @Test
+    public void testSelectedPosition07() throws Throwable {
+        testSetSelectedPosition(false, true, true, false,
+                true, false, RecyclerView.SCROLL_STATE_IDLE);
+    }
+
+    @Test
+    public void testSelectedPosition08() throws Throwable {
+        testSetSelectedPosition(false, true, true, true,
+                true, false, RecyclerView.SCROLL_STATE_IDLE);
+    }
+
+    @Test
+    public void testSelectedPosition09() throws Throwable {
+        testSetSelectedPosition(true, false, false, false,
+                true, false, RecyclerView.SCROLL_STATE_IDLE);
+    }
+
+    @Test
+    public void testSelectedPosition10() throws Throwable {
+        testSetSelectedPosition(true, false, false, true,
+                false, true, RecyclerView.SCROLL_STATE_IDLE);
+    }
+
+    @Test
+    public void testSelectedPosition11() throws Throwable {
+        testSetSelectedPosition(true, false, true, false,
+                false, false, RecyclerView.SCROLL_STATE_IDLE);
+    }
+
+    @Test
+    public void testSelectedPosition12() throws Throwable {
+        testSetSelectedPosition(true, false, true, true,
+                false, true, RecyclerView.SCROLL_STATE_IDLE);
+    }
+
+    @Test
+    public void testSelectedPosition13() throws Throwable {
+        testSetSelectedPosition(true, true, false, false,
+                true, false, RecyclerView.SCROLL_STATE_IDLE);
+    }
+
+    @Test
+    public void testSelectedPosition14() throws Throwable {
+        testSetSelectedPosition(true, true, false, true,
+                true, false, RecyclerView.SCROLL_STATE_IDLE);
+    }
+
+    @Test
+    public void testSelectedPosition15() throws Throwable {
+        testSetSelectedPosition(true, true, true, false,
+                true, false, RecyclerView.SCROLL_STATE_IDLE);
+    }
+
+    @Test
+    public void testSelectedPosition16() throws Throwable {
+        testSetSelectedPosition(true, true, true, true,
+                true, false, RecyclerView.SCROLL_STATE_IDLE);
     }
 
     @Test
@@ -4529,8 +4674,8 @@ public class GridWidgetTest {
             @Override
             public void run() {
                 for (int i  = 0; i < 100; i++) {
-                    delegateCompat.performAccessibilityAction(mGridView,
-                            AccessibilityNodeInfoCompat.ACTION_SCROLL_FORWARD, null);
+                    assertTrue(delegateCompat.performAccessibilityAction(mGridView,
+                            AccessibilityNodeInfoCompat.ACTION_SCROLL_FORWARD, null));
                 }
             }
         });

@@ -161,14 +161,19 @@ class XmlResourcesTransformer internal constructor(private val context: Transfor
             return typeName
         }
 
-        val result = typesMap.types[type]
+        val result = typesMap.mapType(type)
         if (result != null) {
             Log.i(TAG, "  map: %s -> %s", type, result)
             return result.toDotNotation()
         }
 
+        if (context.useIdentityIfTypeIsMissing) {
+            Log.i(TAG, "No mapping for: %s - using identity", type)
+            return typeName
+        }
+
         context.reportNoMappingFoundFailure()
-        Log.e(TAG, "No mapping for: " + type)
+        Log.e(TAG, "No mapping for: %s", type)
         return typeName
     }
 
@@ -178,8 +183,14 @@ class XmlResourcesTransformer internal constructor(private val context: Transfor
         if (result != null) {
             return result.toDotNotation()
         }
+        if (context.useIdentityIfTypeIsMissing) {
+            Log.i(TAG, "No mapping for package: '%s' in artifact: '%s' - using identity",
+                    pckg, archiveName)
+            return packageName
+        }
+
         context.reportNoPackageMappingFoundFailure()
-        Log.e(TAG, "No mapping for package: '$pckg' in artifact: '$archiveName'")
+        Log.e(TAG, "No mapping for package: '%s' in artifact: '%s'", pckg, archiveName)
         return packageName
     }
 }

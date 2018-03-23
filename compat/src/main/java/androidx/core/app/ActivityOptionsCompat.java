@@ -24,11 +24,12 @@ import android.graphics.Bitmap;
 import android.graphics.Rect;
 import android.os.Build;
 import android.os.Bundle;
+import android.view.View;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 import androidx.core.util.Pair;
-import android.view.View;
 
 /**
  * Helper for accessing features in {@link android.app.ActivityOptions} in a backwards compatible
@@ -65,7 +66,8 @@ public class ActivityOptionsCompat {
     public static ActivityOptionsCompat makeCustomAnimation(@NonNull Context context,
             int enterResId, int exitResId) {
         if (Build.VERSION.SDK_INT >= 16) {
-            return createImpl(ActivityOptions.makeCustomAnimation(context, enterResId, exitResId));
+            return new ActivityOptionsCompatImpl(ActivityOptions.makeCustomAnimation(context,
+                    enterResId, exitResId));
         }
         return new ActivityOptionsCompat();
     }
@@ -94,7 +96,7 @@ public class ActivityOptionsCompat {
     public static ActivityOptionsCompat makeScaleUpAnimation(@NonNull View source,
             int startX, int startY, int startWidth, int startHeight) {
         if (Build.VERSION.SDK_INT >= 16) {
-            return createImpl(ActivityOptions.makeScaleUpAnimation(
+            return new ActivityOptionsCompatImpl(ActivityOptions.makeScaleUpAnimation(
                     source, startX, startY, startWidth, startHeight));
         }
         return new ActivityOptionsCompat();
@@ -118,7 +120,7 @@ public class ActivityOptionsCompat {
     public static ActivityOptionsCompat makeClipRevealAnimation(@NonNull View source,
             int startX, int startY, int width, int height) {
         if (Build.VERSION.SDK_INT >= 23) {
-            return createImpl(ActivityOptions.makeClipRevealAnimation(
+            return new ActivityOptionsCompatImpl(ActivityOptions.makeClipRevealAnimation(
                     source, startX, startY, width, height));
         }
         return new ActivityOptionsCompat();
@@ -147,7 +149,7 @@ public class ActivityOptionsCompat {
     public static ActivityOptionsCompat makeThumbnailScaleUpAnimation(@NonNull View source,
             @NonNull Bitmap thumbnail, int startX, int startY) {
         if (Build.VERSION.SDK_INT >= 16) {
-            return createImpl(ActivityOptions.makeThumbnailScaleUpAnimation(
+            return new ActivityOptionsCompatImpl(ActivityOptions.makeThumbnailScaleUpAnimation(
                     source, thumbnail, startX, startY));
         }
         return new ActivityOptionsCompat();
@@ -175,7 +177,7 @@ public class ActivityOptionsCompat {
     public static ActivityOptionsCompat makeSceneTransitionAnimation(@NonNull Activity activity,
             @NonNull View sharedElement, @NonNull String sharedElementName) {
         if (Build.VERSION.SDK_INT >= 21) {
-            return createImpl(ActivityOptions.makeSceneTransitionAnimation(
+            return new ActivityOptionsCompatImpl(ActivityOptions.makeSceneTransitionAnimation(
                     activity, sharedElement, sharedElementName));
         }
         return new ActivityOptionsCompat();
@@ -211,7 +213,8 @@ public class ActivityOptionsCompat {
                             sharedElements[i].first, sharedElements[i].second);
                 }
             }
-            return createImpl(ActivityOptions.makeSceneTransitionAnimation(activity, pairs));
+            return new ActivityOptionsCompatImpl(
+                    ActivityOptions.makeSceneTransitionAnimation(activity, pairs));
         }
         return new ActivityOptionsCompat();
     }
@@ -229,7 +232,7 @@ public class ActivityOptionsCompat {
     @NonNull
     public static ActivityOptionsCompat makeTaskLaunchBehind() {
         if (Build.VERSION.SDK_INT >= 21) {
-            return createImpl(ActivityOptions.makeTaskLaunchBehind());
+            return new ActivityOptionsCompatImpl(ActivityOptions.makeTaskLaunchBehind());
         }
         return new ActivityOptionsCompat();
     }
@@ -241,27 +244,16 @@ public class ActivityOptionsCompat {
     @NonNull
     public static ActivityOptionsCompat makeBasic() {
         if (Build.VERSION.SDK_INT >= 23) {
-            return createImpl(ActivityOptions.makeBasic());
+            return new ActivityOptionsCompatImpl(ActivityOptions.makeBasic());
         }
         return new ActivityOptionsCompat();
     }
 
     @RequiresApi(16)
-    private static ActivityOptionsCompat createImpl(ActivityOptions options) {
-        if (Build.VERSION.SDK_INT >= 24) {
-            return new ActivityOptionsCompatApi24Impl(options);
-        } else if (Build.VERSION.SDK_INT >= 23) {
-            return new ActivityOptionsCompatApi23Impl(options);
-        } else {
-            return new ActivityOptionsCompatApi16Impl(options);
-        }
-    }
+    private static class ActivityOptionsCompatImpl extends ActivityOptionsCompat {
+        private final ActivityOptions mActivityOptions;
 
-    @RequiresApi(16)
-    private static class ActivityOptionsCompatApi16Impl extends ActivityOptionsCompat {
-        protected final ActivityOptions mActivityOptions;
-
-        ActivityOptionsCompatApi16Impl(ActivityOptions activityOptions) {
+        ActivityOptionsCompatImpl(ActivityOptions activityOptions) {
             mActivityOptions = activityOptions;
         }
 
@@ -272,35 +264,21 @@ public class ActivityOptionsCompat {
 
         @Override
         public void update(ActivityOptionsCompat otherOptions) {
-            if (otherOptions instanceof ActivityOptionsCompatApi16Impl) {
-                ActivityOptionsCompatApi16Impl otherImpl =
-                        (ActivityOptionsCompatApi16Impl) otherOptions;
+            if (otherOptions instanceof ActivityOptionsCompatImpl) {
+                ActivityOptionsCompatImpl otherImpl =
+                        (ActivityOptionsCompatImpl) otherOptions;
                 mActivityOptions.update(otherImpl.mActivityOptions);
             }
-        }
-    }
-
-    @RequiresApi(23)
-    private static class ActivityOptionsCompatApi23Impl extends ActivityOptionsCompatApi16Impl {
-        ActivityOptionsCompatApi23Impl(ActivityOptions activityOptions) {
-            super(activityOptions);
         }
 
         @Override
         public void requestUsageTimeReport(PendingIntent receiver) {
             mActivityOptions.requestUsageTimeReport(receiver);
         }
-    }
-
-    @RequiresApi(24)
-    private static class ActivityOptionsCompatApi24Impl extends ActivityOptionsCompatApi23Impl {
-        ActivityOptionsCompatApi24Impl(ActivityOptions activityOptions) {
-            super(activityOptions);
-        }
 
         @Override
         public ActivityOptionsCompat setLaunchBounds(@Nullable Rect screenSpacePixelRect) {
-            return new ActivityOptionsCompatApi24Impl(
+            return new ActivityOptionsCompatImpl(
                     mActivityOptions.setLaunchBounds(screenSpacePixelRect));
         }
 

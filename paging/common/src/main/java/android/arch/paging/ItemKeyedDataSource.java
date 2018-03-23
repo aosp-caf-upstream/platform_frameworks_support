@@ -16,6 +16,7 @@
 
 package android.arch.paging;
 
+import android.arch.core.util.Function;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 
@@ -72,7 +73,7 @@ public abstract class ItemKeyedDataSource<Key, Value> extends ContiguousDataSour
         public final boolean placeholdersEnabled;
 
 
-        LoadInitialParams(@Nullable Key requestedInitialKey, int requestedLoadSize,
+        public LoadInitialParams(@Nullable Key requestedInitialKey, int requestedLoadSize,
                 boolean placeholdersEnabled) {
             this.requestedInitialKey = requestedInitialKey;
             this.requestedLoadSize = requestedLoadSize;
@@ -102,7 +103,7 @@ public abstract class ItemKeyedDataSource<Key, Value> extends ContiguousDataSour
          */
         public final int requestedLoadSize;
 
-        LoadParams(Key key, int requestedLoadSize) {
+        public LoadParams(Key key, int requestedLoadSize) {
             this.key = key;
             this.requestedLoadSize = requestedLoadSize;
         }
@@ -126,14 +127,7 @@ public abstract class ItemKeyedDataSource<Key, Value> extends ContiguousDataSour
      *
      * @param <Value> Type of items being loaded.
      */
-    public static class LoadInitialCallback<Value> extends LoadCallback<Value> {
-        private final boolean mCountingEnabled;
-        LoadInitialCallback(@NonNull ItemKeyedDataSource dataSource, boolean countingEnabled,
-                @NonNull PageResult.Receiver<Value> receiver) {
-            super(dataSource, PageResult.INIT, null, receiver);
-            mCountingEnabled = countingEnabled;
-        }
-
+    public abstract static class LoadInitialCallback<Value> extends LoadCallback<Value> {
         /**
          * Called to pass initial load state from a DataSource.
          * <p>
@@ -155,20 +149,9 @@ public abstract class ItemKeyedDataSource<Key, Value> extends ContiguousDataSour
          *                   as well as any items that can be loaded in front or behind of
          *                   {@code data}.
          */
-        public void onResult(@NonNull List<Value> data, int position, int totalCount) {
-            if (!dispatchInvalidResultIfInvalid()) {
-                validateInitialLoadParams(data, position, totalCount);
-
-                int trailingUnloadedCount = totalCount - position - data.size();
-                if (mCountingEnabled) {
-                    dispatchResultToReceiver(new PageResult<>(
-                            data, position, trailingUnloadedCount, 0));
-                } else {
-                    dispatchResultToReceiver(new PageResult<>(data, position));
-                }
-            }
-        }
+        public abstract void onResult(@NonNull List<Value> data, int position, int totalCount);
     }
+
 
     /**
      * Callback for ItemKeyedDataSource {@link #loadBefore(LoadParams, LoadCallback)}
@@ -182,13 +165,7 @@ public abstract class ItemKeyedDataSource<Key, Value> extends ContiguousDataSour
      *
      * @param <Value> Type of items being loaded.
      */
-    public static class LoadCallback<Value> extends BaseLoadCallback<Value> {
-        LoadCallback(@NonNull ItemKeyedDataSource dataSource, @PageResult.ResultType int type,
-                @Nullable Executor mainThreadExecutor,
-                @NonNull PageResult.Receiver<Value> receiver) {
-            super(dataSource, type, mainThreadExecutor, receiver);
-        }
-
+    public abstract static class LoadCallback<Value> {
         /**
          * Called to pass loaded data from a DataSource.
          * <p>
@@ -204,9 +181,55 @@ public abstract class ItemKeyedDataSource<Key, Value> extends ContiguousDataSour
          *
          * @param data List of items loaded from the ItemKeyedDataSource.
          */
+        public abstract void onResult(@NonNull List<Value> data);
+    }
+
+    static class LoadInitialCallbackImpl<Value> extends LoadInitialCallback<Value> {
+        final LoadCallbackHelper<Value> mCallbackHelper;
+        private final boolean mCountingEnabled;
+        LoadInitialCallbackImpl(@NonNull ItemKeyedDataSource dataSource, boolean countingEnabled,
+                @NonNull PageResult.Receiver<Value> receiver) {
+            mCallbackHelper = new LoadCallbackHelper<>(dataSource, PageResult.INIT, null, receiver);
+            mCountingEnabled = countingEnabled;
+        }
+
+        @Override
+        public void onResult(@NonNull List<Value> data, int position, int totalCount) {
+            if (!mCallbackHelper.dispatchInvalidResultIfInvalid()) {
+                LoadCallbackHelper.validateInitialLoadParams(data, position, totalCount);
+
+                int trailingUnloadedCount = totalCount - position - data.size();
+                if (mCountingEnabled) {
+                    mCallbackHelper.dispatchResultToReceiver(new PageResult<>(
+                            data, position, trailingUnloadedCount, 0));
+                } else {
+                    mCallbackHelper.dispatchResultToReceiver(new PageResult<>(data, position));
+                }
+            }
+        }
+
+        @Override
         public void onResult(@NonNull List<Value> data) {
-            if (!dispatchInvalidResultIfInvalid()) {
-                dispatchResultToReceiver(new PageResult<>(data, 0, 0, 0));
+            if (!mCallbackHelper.dispatchInvalidResultIfInvalid()) {
+                mCallbackHelper.dispatchResultToReceiver(new PageResult<>(data, 0, 0, 0));
+            }
+        }
+    }
+
+    static class LoadCallbackImpl<Value> extends LoadCallback<Value> {
+        final LoadCallbackHelper<Value> mCallbackHelper;
+
+        LoadCallbackImpl(@NonNull ItemKeyedDataSource dataSource, @PageResult.ResultType int type,
+                @Nullable Executor mainThreadExecutor,
+                @NonNull PageResult.Receiver<Value> receiver) {
+            mCallbackHelper = new LoadCallbackHelper<>(
+                    dataSource, type, mainThreadExecutor, receiver);
+        }
+
+        @Override
+        public void onResult(@NonNull List<Value> data) {
+            if (!mCallbackHelper.dispatchInvalidResultIfInvalid()) {
+                mCallbackHelper.dispatchResultToReceiver(new PageResult<>(data, 0, 0, 0));
             }
         }
     }
@@ -225,14 +248,14 @@ public abstract class ItemKeyedDataSource<Key, Value> extends ContiguousDataSour
     final void dispatchLoadInitial(@Nullable Key key, int initialLoadSize, int pageSize,
             boolean enablePlaceholders, @NonNull Executor mainThreadExecutor,
             @NonNull PageResult.Receiver<Value> receiver) {
-        LoadInitialCallback<Value> callback =
-                new LoadInitialCallback<>(this, enablePlaceholders, receiver);
+        LoadInitialCallbackImpl<Value> callback =
+                new LoadInitialCallbackImpl<>(this, enablePlaceholders, receiver);
         loadInitial(new LoadInitialParams<>(key, initialLoadSize, enablePlaceholders), callback);
 
         // If initialLoad's callback is not called within the body, we force any following calls
         // to post to the UI thread. This constructor may be run on a background thread, but
         // after constructor, mutation must happen on UI thread.
-        callback.setPostExecutor(mainThreadExecutor);
+        callback.mCallbackHelper.setPostExecutor(mainThreadExecutor);
     }
 
     @Override
@@ -240,7 +263,7 @@ public abstract class ItemKeyedDataSource<Key, Value> extends ContiguousDataSour
             int pageSize, @NonNull Executor mainThreadExecutor,
             @NonNull PageResult.Receiver<Value> receiver) {
         loadAfter(new LoadParams<>(getKey(currentEndItem), pageSize),
-                new LoadCallback<>(this, PageResult.APPEND, mainThreadExecutor, receiver));
+                new LoadCallbackImpl<>(this, PageResult.APPEND, mainThreadExecutor, receiver));
     }
 
     @Override
@@ -248,7 +271,7 @@ public abstract class ItemKeyedDataSource<Key, Value> extends ContiguousDataSour
             int pageSize, @NonNull Executor mainThreadExecutor,
             @NonNull PageResult.Receiver<Value> receiver) {
         loadBefore(new LoadParams<>(getKey(currentBeginItem), pageSize),
-                new LoadCallback<>(this, PageResult.PREPEND, mainThreadExecutor, receiver));
+                new LoadCallbackImpl<>(this, PageResult.PREPEND, mainThreadExecutor, receiver));
     }
 
     /**
@@ -334,4 +357,18 @@ public abstract class ItemKeyedDataSource<Key, Value> extends ContiguousDataSour
      */
     @NonNull
     public abstract Key getKey(@NonNull Value item);
+
+    @NonNull
+    @Override
+    public final <ToValue> ItemKeyedDataSource<Key, ToValue> mapByPage(
+            @NonNull Function<List<Value>, List<ToValue>> function) {
+        return new WrapperItemKeyedDataSource<>(this, function);
+    }
+
+    @NonNull
+    @Override
+    public final <ToValue> ItemKeyedDataSource<Key, ToValue> map(
+            @NonNull Function<Value, ToValue> function) {
+        return mapByPage(createListFunction(function));
+    }
 }

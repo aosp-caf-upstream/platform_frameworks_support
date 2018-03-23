@@ -22,6 +22,7 @@ import android.arch.persistence.room.Query
 import android.arch.persistence.room.RawQuery
 import android.arch.persistence.room.Update
 import android.arch.persistence.room.ext.RoomTypeNames
+import android.arch.persistence.room.ext.SupportDbTypeNames
 import android.arch.persistence.room.parser.SQLTypeAffinity
 import android.arch.persistence.room.vo.CustomTypeConverter
 import android.arch.persistence.room.vo.Field
@@ -504,4 +505,16 @@ object ProcessorErrors {
             " String or SupportSQLiteQuery"
 
     val RAW_QUERY_BAD_RETURN_TYPE = "RawQuery methods must return a non-void type."
+
+    fun rawQueryBadEntity(typeName: TypeName): String {
+        return """
+            observedEntities field in RawQuery must either reference a class that is annotated
+            with @Entity or it should reference a Pojo that either contains @Embedded fields that
+            are annotated with @Entity or @Relation fields.
+            $typeName does not have these properties, did you mean another class?
+            """.trim()
+    }
+
+    val RAW_QUERY_STRING_PARAMETER_REMOVED = "RawQuery does not allow passing a string anymore." +
+            " Please use ${SupportDbTypeNames.QUERY}."
 }

@@ -21,6 +21,9 @@ import org.junit.Assert.fail
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.JUnit4
+import org.mockito.Mockito.mock
+import org.mockito.Mockito.verify
+import org.mockito.Mockito.verifyNoMoreInteractions
 
 @RunWith(JUnit4::class)
 class PageKeyedDataSourceTest {
@@ -153,6 +156,111 @@ class PageKeyedDataSourceTest {
     fun initialLoadCallbackInvalidThreeArg() = performLoadInitial(invalidateDataSource = true) {
         // LoadInitialCallback doesn't throw on invalid args if DataSource is invalid
         it.onResult(emptyList(), 0, 1, null, null)
+    }
+
+    private abstract class WrapperDataSource<K, A, B>(private val source: PageKeyedDataSource<K, A>)
+            : PageKeyedDataSource<K, B>() {
+        private val invalidatedCallback = DataSource.InvalidatedCallback {
+            invalidate()
+            removeCallback()
+        }
+
+        init {
+            source.addInvalidatedCallback(invalidatedCallback)
+        }
+
+        private fun removeCallback() {
+            removeInvalidatedCallback(invalidatedCallback)
+        }
+
+        override fun loadInitial(params: LoadInitialParams<K>,
+                callback: LoadInitialCallback<K, B>) {
+            source.loadInitial(params, object : LoadInitialCallback<K, A>() {
+                override fun onResult(data: List<A>, position: Int, totalCount: Int,
+                        previousPageKey: K?, nextPageKey: K?) {
+                    callback.onResult(convert(data), position, totalCount,
+                            previousPageKey, nextPageKey)
+                }
+
+                override fun onResult(data: MutableList<A>, previousPageKey: K?, nextPageKey: K?) {
+                    callback.onResult(convert(data), previousPageKey, nextPageKey)
+                }
+            })
+        }
+
+        override fun loadBefore(params: LoadParams<K>, callback: LoadCallback<K, B>) {
+            source.loadBefore(params, object : LoadCallback<K, A>() {
+                override fun onResult(data: List<A>, adjacentPageKey: K?) {
+                    callback.onResult(convert(data), adjacentPageKey)
+                }
+            })
+        }
+
+        override fun loadAfter(params: LoadParams<K>, callback: LoadCallback<K, B>) {
+            source.loadAfter(params, object : LoadCallback<K, A>() {
+                override fun onResult(data: List<A>, adjacentPageKey: K?) {
+                    callback.onResult(convert(data), adjacentPageKey)
+                }
+            })
+        }
+
+        protected abstract fun convert(source: List<A>): List<B>
+    }
+
+    private class StringWrapperDataSource<K, V>(source: PageKeyedDataSource<K, V>)
+            : WrapperDataSource<K, V, String>(source) {
+        override fun convert(source: List<V>): List<String> {
+            return source.map { it.toString() }
+        }
+    }
+
+    private fun verifyWrappedDataSource(createWrapper:
+            (PageKeyedDataSource<String, Item>) -> PageKeyedDataSource<String, String>) {
+        // verify that it's possible to wrap a PageKeyedDataSource, and add info to its data
+        val orig = ItemDataSource(data = PAGE_MAP)
+        val wrapper = createWrapper(orig)
+
+        // load initial
+        @Suppress("UNCHECKED_CAST")
+        val loadInitialCallback = mock(PageKeyedDataSource.LoadInitialCallback::class.java)
+                as PageKeyedDataSource.LoadInitialCallback<String, String>
+
+        wrapper.loadInitial(PageKeyedDataSource.LoadInitialParams<String>(4, true),
+                loadInitialCallback)
+        val expectedInitial = PAGE_MAP.get(INIT_KEY)!!
+        verify(loadInitialCallback).onResult(expectedInitial.data.map { it.toString() },
+                expectedInitial.prev, expectedInitial.next)
+        verifyNoMoreInteractions(loadInitialCallback)
+
+        @Suppress("UNCHECKED_CAST")
+        val loadCallback = mock(PageKeyedDataSource.LoadCallback::class.java)
+                as PageKeyedDataSource.LoadCallback<String, String>
+        // load after
+        wrapper.loadAfter(PageKeyedDataSource.LoadParams(expectedInitial.next!!, 4), loadCallback)
+        val expectedAfter = PAGE_MAP.get(expectedInitial.next)!!
+        verify(loadCallback).onResult(expectedAfter.data.map { it.toString() },
+                expectedAfter.next)
+        verifyNoMoreInteractions(loadCallback)
+
+        // load before
+        wrapper.loadBefore(PageKeyedDataSource.LoadParams(expectedAfter.prev!!, 4), loadCallback)
+        verify(loadCallback).onResult(expectedInitial.data.map { it.toString() },
+                expectedInitial.prev)
+        verifyNoMoreInteractions(loadCallback)
+    }
+
+    @Test
+    fun testManualWrappedDataSource() = verifyWrappedDataSource {
+        StringWrapperDataSource(it)
+    }
+
+    @Test
+    fun testListConverterWrappedDataSource() = verifyWrappedDataSource {
+        it.mapByPage { it.map { it.toString() } }
+    }
+    @Test
+    fun testItemConverterWrappedDataSource() = verifyWrappedDataSource {
+        it.map { it.toString() }
     }
 
     companion object {
