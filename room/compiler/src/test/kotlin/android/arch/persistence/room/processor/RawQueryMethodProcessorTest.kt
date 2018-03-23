@@ -23,11 +23,11 @@ import android.arch.persistence.room.Entity
 import android.arch.persistence.room.PrimaryKey
 import android.arch.persistence.room.Query
 import android.arch.persistence.room.RawQuery
-import android.arch.persistence.room.ext.CommonTypeNames
 import android.arch.persistence.room.ext.PagingTypeNames
 import android.arch.persistence.room.ext.SupportDbTypeNames
 import android.arch.persistence.room.ext.hasAnnotation
 import android.arch.persistence.room.ext.typeName
+import android.arch.persistence.room.processor.ProcessorErrors.RAW_QUERY_STRING_PARAMETER_REMOVED
 import android.arch.persistence.room.testing.TestInvocation
 import android.arch.persistence.room.testing.TestProcessor
 import android.arch.persistence.room.vo.RawQueryMethod
@@ -70,17 +70,8 @@ class RawQueryMethodProcessorTest {
                 """
                 @RawQuery
                 abstract public int[] foo(String query);
-                """) { query, _ ->
-            assertThat(query.name, `is`("foo"))
-            assertThat(query.runtimeQueryParam, `is`(
-                    RawQueryMethod.RuntimeQueryParameter(
-                            paramName = "query",
-                            type = CommonTypeNames.STRING
-                    )
-            ))
-            assertThat(query.returnType.typeName(),
-                    `is`(ArrayTypeName.of(TypeName.INT) as TypeName))
-        }.compilesWithoutError()
+                """) { _, _ ->
+        }.failsToCompile().withErrorContaining(RAW_QUERY_STRING_PARAMETER_REMOVED)
     }
 
     @Test
@@ -97,10 +88,8 @@ class RawQueryMethodProcessorTest {
                             type = SupportDbTypeNames.QUERY
                     )
             ))
-            assertThat(query.observedEntities.size, `is`(1))
-            assertThat(
-                    query.observedEntities.first().typeName,
-                    `is`(COMMON.USER_TYPE_NAME as TypeName))
+            assertThat(query.observedTableNames.size, `is`(1))
+            assertThat(query.observedTableNames, `is`(setOf("User")))
         }.compilesWithoutError()
     }
 
@@ -118,7 +107,7 @@ class RawQueryMethodProcessorTest {
                             type = SupportDbTypeNames.QUERY
                     )
             ))
-            assertThat(query.observedEntities, `is`(emptyList()))
+            assertThat(query.observedTableNames, `is`(emptySet()))
         }.failsToCompile()
                 .withErrorContaining(ProcessorErrors.OBSERVABLE_QUERY_NOTHING_TO_OBSERVE)
     }
@@ -180,7 +169,7 @@ class RawQueryMethodProcessorTest {
                     )
             ))
             assertThat(query.returnType.typeName(), `is`(pojo))
-            assertThat(query.observedEntities, `is`(emptyList()))
+            assertThat(query.observedTableNames, `is`(emptySet()))
         }.compilesWithoutError()
     }
 
@@ -213,7 +202,8 @@ class RawQueryMethodProcessorTest {
         singleQueryMethod(
                 """
                 @RawQuery
-                abstract public int[] foo(String query, String query2);
+                abstract public int[] foo(SupportSQLiteQuery query,
+                                          SupportSQLiteQuery query2);
                 """) { _, _ ->
         }.failsToCompile().withErrorContaining(
                 ProcessorErrors.RAW_QUERY_BAD_PARAMS
@@ -225,11 +215,58 @@ class RawQueryMethodProcessorTest {
         singleQueryMethod(
                 """
                 @RawQuery
-                abstract public int[] foo(String... query);
+                abstract public int[] foo(SupportSQLiteQuery... query);
                 """) { _, _ ->
         }.failsToCompile().withErrorContaining(
                 ProcessorErrors.RAW_QUERY_BAD_PARAMS
         )
+    }
+
+    @Test
+    fun observed_notAnEntity() {
+        singleQueryMethod(
+                """
+                @RawQuery(observedEntities = {${COMMON.NOT_AN_ENTITY_TYPE_NAME}.class})
+                abstract public int[] foo(SupportSQLiteQuery query);
+                """) { _, _ ->
+        }.failsToCompile().withErrorContaining(
+                ProcessorErrors.rawQueryBadEntity(COMMON.NOT_AN_ENTITY_TYPE_NAME)
+        )
+    }
+
+    @Test
+    fun observed_relationPojo() {
+        singleQueryMethod(
+                """
+                public static class MyPojo {
+                    public String foo;
+                    @Relation(
+                        parentColumn = "foo",
+                        entityColumn = "name"
+                    )
+                    public java.util.List<User> users;
+                }
+                @RawQuery(observedEntities = MyPojo.class)
+                abstract public int[] foo(SupportSQLiteQuery query);
+                """) { method, _ ->
+            assertThat(method.observedTableNames, `is`(setOf("User")))
+        }.compilesWithoutError()
+    }
+
+    @Test
+    fun observed_embedded() {
+        singleQueryMethod(
+                """
+                public static class MyPojo {
+                    public String foo;
+                    @Embedded
+                    public User users;
+                }
+                @RawQuery(observedEntities = MyPojo.class)
+                abstract public int[] foo(SupportSQLiteQuery query);
+                """) { method, _ ->
+            assertThat(method.observedTableNames, `is`(setOf("User")))
+        }.compilesWithoutError()
     }
 
     private fun singleQueryMethod(
@@ -242,7 +279,8 @@ class RawQueryMethodProcessorTest {
                                 + input.joinToString("\n")
                                 + DAO_SUFFIX
                 ), COMMON.LIVE_DATA, COMMON.COMPUTABLE_LIVE_DATA, COMMON.USER,
-                        COMMON.DATA_SOURCE_FACTORY, COMMON.POSITIONAL_DATA_SOURCE))
+                        COMMON.DATA_SOURCE_FACTORY, COMMON.POSITIONAL_DATA_SOURCE,
+                        COMMON.NOT_AN_ENTITY))
                 .processedWith(TestProcessor.builder()
                         .forAnnotations(Query::class, Dao::class, ColumnInfo::class,
                                 Entity::class, PrimaryKey::class, RawQuery::class)

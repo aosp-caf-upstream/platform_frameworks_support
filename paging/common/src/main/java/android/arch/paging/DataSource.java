@@ -16,11 +16,13 @@
 
 package android.arch.paging;
 
+import android.arch.core.util.Function;
 import android.support.annotation.AnyThread;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.annotation.WorkerThread;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executor;
@@ -113,7 +115,7 @@ public abstract class DataSource<Key, Value> {
      * @param <Key> Key identifying items in DataSource.
      * @param <Value> Type of items in the list loaded by the DataSources.
      */
-    public interface Factory<Key, Value> {
+    public abstract static class Factory<Key, Value> {
         /**
          * Create a DataSource.
          * <p>
@@ -127,7 +129,78 @@ public abstract class DataSource<Key, Value> {
          *
          * @return the new DataSource.
          */
-        DataSource<Key, Value> create();
+        public abstract DataSource<Key, Value> create();
+
+        /**
+         * Applies the given function to each value emitted by DataSources produced by this Factory.
+         * <p>
+         * Same as {@link #mapByPage(Function)}, but operates on individual items.
+         *
+         * @param function Function that runs on each loaded item, returning items of a potentially
+         *                  new type.
+         * @param <ToValue> Type of items produced by the new DataSource, from the passed function.
+         *
+         * @return A new DataSource.Factory, which transforms items using the given function.
+         *
+         * @see #mapByPage(Function)
+         * @see DataSource#map(Function)
+         * @see DataSource#mapByPage(Function)
+         */
+        @NonNull
+        public <ToValue> DataSource.Factory<Key, ToValue> map(
+                @NonNull Function<Value, ToValue> function) {
+            return mapByPage(createListFunction(function));
+        }
+
+        /**
+         * Applies the given function to each value emitted by DataSources produced by this Factory.
+         * <p>
+         * Same as {@link #map(Function)}, but allows for batch conversions.
+         *
+         * @param function Function that runs on each loaded page, returning items of a potentially
+         *                  new type.
+         * @param <ToValue> Type of items produced by the new DataSource, from the passed function.
+         *
+         * @return A new DataSource.Factory, which transforms items using the given function.
+         *
+         * @see #map(Function)
+         * @see DataSource#map(Function)
+         * @see DataSource#mapByPage(Function)
+         */
+        @NonNull
+        public <ToValue> DataSource.Factory<Key, ToValue> mapByPage(
+                @NonNull final Function<List<Value>, List<ToValue>> function) {
+            return new Factory<Key, ToValue>() {
+                @Override
+                public DataSource<Key, ToValue> create() {
+                    return Factory.this.create().mapByPage(function);
+                }
+            };
+        }
+    }
+
+    @NonNull
+    static <X, Y> Function<List<X>, List<Y>> createListFunction(
+            final @NonNull Function<X, Y> innerFunc) {
+        return new Function<List<X>, List<Y>>() {
+            @Override
+            public List<Y> apply(@NonNull List<X> source) {
+                List<Y> out = new ArrayList<>(source.size());
+                for (int i = 0; i < source.size(); i++) {
+                    out.add(innerFunc.apply(source.get(i)));
+                }
+                return out;
+            }
+        };
+    }
+
+    static <A, B> List<B> convert(Function<List<A>, List<B>> function, List<A> source) {
+        List<B> dest = function.apply(source);
+        if (dest.size() != source.size()) {
+            throw new IllegalStateException("Invalid Function " + function
+                    + " changed return size. This is not supported.");
+        }
+        return dest;
     }
 
     // Since we currently rely on implementation details of two implementations,
@@ -136,12 +209,50 @@ public abstract class DataSource<Key, Value> {
     }
 
     /**
+     * Applies the given function to each value emitted by the DataSource.
+     * <p>
+     * Same as {@link #map(Function)}, but allows for batch conversions.
+     *
+     * @param function Function that runs on each loaded page, returning items of a potentially
+     *                  new type.
+     * @param <ToValue> Type of items produced by the new DataSource, from the passed function.
+     *
+     * @return A new DataSource, which transforms items using the given function.
+     *
+     * @see #map(Function)
+     * @see DataSource.Factory#map(Function)
+     * @see DataSource.Factory#mapByPage(Function)
+     */
+    @NonNull
+    public abstract <ToValue> DataSource<Key, ToValue> mapByPage(
+            @NonNull Function<List<Value>, List<ToValue>> function);
+
+    /**
+     * Applies the given function to each value emitted by the DataSource.
+     * <p>
+     * Same as {@link #mapByPage(Function)}, but operates on individual items.
+     *
+     * @param function Function that runs on each loaded item, returning items of a potentially
+     *                  new type.
+     * @param <ToValue> Type of items produced by the new DataSource, from the passed function.
+     *
+     * @return A new DataSource, which transforms items using the given function.
+     *
+     * @see #mapByPage(Function)
+     * @see DataSource.Factory#map(Function)
+     * @see DataSource.Factory#mapByPage(Function)
+     */
+    @NonNull
+    public abstract <ToValue> DataSource<Key, ToValue> map(
+            @NonNull Function<Value, ToValue> function);
+
+    /**
      * Returns true if the data source guaranteed to produce a contiguous set of items,
      * never producing gaps.
      */
     abstract boolean isContiguous();
 
-    static class BaseLoadCallback<T> {
+    static class LoadCallbackHelper<T> {
         static void validateInitialLoadParams(@NonNull List<?> data, int position, int totalCount) {
             if (position < 0) {
                 throw new IllegalArgumentException("Position must be non-negative");
@@ -166,7 +277,7 @@ public abstract class DataSource<Key, Value> {
         private Executor mPostExecutor = null;
         private boolean mHasSignalled = false;
 
-        BaseLoadCallback(@NonNull DataSource dataSource, @PageResult.ResultType int resultType,
+        LoadCallbackHelper(@NonNull DataSource dataSource, @PageResult.ResultType int resultType,
                 @Nullable Executor mainThreadExecutor, @NonNull PageResult.Receiver<T> receiver) {
             mDataSource = dataSource;
             mResultType = resultType;

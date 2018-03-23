@@ -16,6 +16,7 @@
 
 package android.arch.paging;
 
+import android.arch.core.util.Function;
 import android.support.annotation.GuardedBy;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -103,8 +104,7 @@ public abstract class PageKeyedDataSource<Key, Value> extends ContiguousDataSour
         public final boolean placeholdersEnabled;
 
 
-        LoadInitialParams(int requestedLoadSize,
-                boolean placeholdersEnabled) {
+        public LoadInitialParams(int requestedLoadSize, boolean placeholdersEnabled) {
             this.requestedLoadSize = requestedLoadSize;
             this.placeholdersEnabled = placeholdersEnabled;
         }
@@ -133,7 +133,7 @@ public abstract class PageKeyedDataSource<Key, Value> extends ContiguousDataSour
          */
         public final int requestedLoadSize;
 
-        LoadParams(Key key, int requestedLoadSize) {
+        public LoadParams(Key key, int requestedLoadSize) {
             this.key = key;
             this.requestedLoadSize = requestedLoadSize;
         }
@@ -159,16 +159,7 @@ public abstract class PageKeyedDataSource<Key, Value> extends ContiguousDataSour
      * @param <Key> Type of data used to query pages.
      * @param <Value> Type of items being loaded.
      */
-    public static class LoadInitialCallback<Key, Value> extends BaseLoadCallback<Value> {
-        private final PageKeyedDataSource<Key, Value> mDataSource;
-        private final boolean mCountingEnabled;
-        LoadInitialCallback(@NonNull PageKeyedDataSource<Key, Value> dataSource,
-                boolean countingEnabled, @NonNull PageResult.Receiver<Value> receiver) {
-            super(dataSource, PageResult.INIT, null, receiver);
-            mDataSource = dataSource;
-            mCountingEnabled = countingEnabled;
-        }
-
+    public abstract static class LoadInitialCallback<Key, Value> {
         /**
          * Called to pass initial load state from a DataSource.
          * <p>
@@ -190,23 +181,8 @@ public abstract class PageKeyedDataSource<Key, Value> extends ContiguousDataSour
          *                   as well as any items that can be loaded in front or behind of
          *                   {@code data}.
          */
-        public void onResult(@NonNull List<Value> data, int position, int totalCount,
-                @Nullable Key previousPageKey, @Nullable Key nextPageKey) {
-            if (!dispatchInvalidResultIfInvalid()) {
-                validateInitialLoadParams(data, position, totalCount);
-
-                // setup keys before dispatching data, so guaranteed to be ready
-                mDataSource.initKeys(previousPageKey, nextPageKey);
-
-                int trailingUnloadedCount = totalCount - position - data.size();
-                if (mCountingEnabled) {
-                    dispatchResultToReceiver(new PageResult<>(
-                            data, position, trailingUnloadedCount, 0));
-                } else {
-                    dispatchResultToReceiver(new PageResult<>(data, position));
-                }
-            }
-        }
+        public abstract void onResult(@NonNull List<Value> data, int position, int totalCount,
+                @Nullable Key previousPageKey, @Nullable Key nextPageKey);
 
         /**
          * Called to pass loaded data from a DataSource.
@@ -223,13 +199,8 @@ public abstract class PageKeyedDataSource<Key, Value> extends ContiguousDataSour
          * @param nextPageKey Key for page after the initial load result, or {@code null} if no
          *                        more data can be loaded after.
          */
-        public void onResult(@NonNull List<Value> data, @Nullable Key previousPageKey,
-                @Nullable Key nextPageKey) {
-            if (!dispatchInvalidResultIfInvalid()) {
-                mDataSource.initKeys(previousPageKey, nextPageKey);
-                dispatchResultToReceiver(new PageResult<>(data, 0, 0, 0));
-            }
-        }
+        public abstract void onResult(@NonNull List<Value> data, @Nullable Key previousPageKey,
+                @Nullable Key nextPageKey);
     }
 
     /**
@@ -245,14 +216,7 @@ public abstract class PageKeyedDataSource<Key, Value> extends ContiguousDataSour
      * @param <Key> Type of data used to query pages.
      * @param <Value> Type of items being loaded.
      */
-    public static class LoadCallback<Key, Value> extends BaseLoadCallback<Value> {
-        private final PageKeyedDataSource<Key, Value> mDataSource;
-        LoadCallback(@NonNull PageKeyedDataSource<Key, Value> dataSource,
-                @PageResult.ResultType int type, @Nullable Executor mainThreadExecutor,
-                @NonNull PageResult.Receiver<Value> receiver) {
-            super(dataSource, type, mainThreadExecutor, receiver);
-            mDataSource = dataSource;
-        }
+    public abstract static class LoadCallback<Key, Value> {
 
         /**
          * Called to pass loaded data from a DataSource.
@@ -275,14 +239,70 @@ public abstract class PageKeyedDataSource<Key, Value> extends ContiguousDataSour
          *                        / next page in {@link #loadAfter}), or {@code null} if there are
          *                        no more pages to load in the current load direction.
          */
+        public abstract void onResult(@NonNull List<Value> data, @Nullable Key adjacentPageKey);
+    }
+
+    static class LoadInitialCallbackImpl<Key, Value> extends LoadInitialCallback<Key, Value> {
+        final LoadCallbackHelper<Value> mCallbackHelper;
+        private final PageKeyedDataSource<Key, Value> mDataSource;
+        private final boolean mCountingEnabled;
+        LoadInitialCallbackImpl(@NonNull PageKeyedDataSource<Key, Value> dataSource,
+                boolean countingEnabled, @NonNull PageResult.Receiver<Value> receiver) {
+            mCallbackHelper = new LoadCallbackHelper<>(
+                    dataSource, PageResult.INIT, null, receiver);
+            mDataSource = dataSource;
+            mCountingEnabled = countingEnabled;
+        }
+
+        @Override
+        public void onResult(@NonNull List<Value> data, int position, int totalCount,
+                @Nullable Key previousPageKey, @Nullable Key nextPageKey) {
+            if (!mCallbackHelper.dispatchInvalidResultIfInvalid()) {
+                LoadCallbackHelper.validateInitialLoadParams(data, position, totalCount);
+
+                // setup keys before dispatching data, so guaranteed to be ready
+                mDataSource.initKeys(previousPageKey, nextPageKey);
+
+                int trailingUnloadedCount = totalCount - position - data.size();
+                if (mCountingEnabled) {
+                    mCallbackHelper.dispatchResultToReceiver(new PageResult<>(
+                            data, position, trailingUnloadedCount, 0));
+                } else {
+                    mCallbackHelper.dispatchResultToReceiver(new PageResult<>(data, position));
+                }
+            }
+        }
+
+        @Override
+        public void onResult(@NonNull List<Value> data, @Nullable Key previousPageKey,
+                @Nullable Key nextPageKey) {
+            if (!mCallbackHelper.dispatchInvalidResultIfInvalid()) {
+                mDataSource.initKeys(previousPageKey, nextPageKey);
+                mCallbackHelper.dispatchResultToReceiver(new PageResult<>(data, 0, 0, 0));
+            }
+        }
+    }
+
+    static class LoadCallbackImpl<Key, Value> extends LoadCallback<Key, Value> {
+        final LoadCallbackHelper<Value> mCallbackHelper;
+        private final PageKeyedDataSource<Key, Value> mDataSource;
+        LoadCallbackImpl(@NonNull PageKeyedDataSource<Key, Value> dataSource,
+                @PageResult.ResultType int type, @Nullable Executor mainThreadExecutor,
+                @NonNull PageResult.Receiver<Value> receiver) {
+            mCallbackHelper = new LoadCallbackHelper<>(
+                    dataSource, type, mainThreadExecutor, receiver);
+            mDataSource = dataSource;
+        }
+
+        @Override
         public void onResult(@NonNull List<Value> data, @Nullable Key adjacentPageKey) {
-            if (!dispatchInvalidResultIfInvalid()) {
-                if (mResultType == PageResult.APPEND) {
+            if (!mCallbackHelper.dispatchInvalidResultIfInvalid()) {
+                if (mCallbackHelper.mResultType == PageResult.APPEND) {
                     mDataSource.setNextKey(adjacentPageKey);
                 } else {
                     mDataSource.setPreviousKey(adjacentPageKey);
                 }
-                dispatchResultToReceiver(new PageResult<>(data, 0, 0, 0));
+                mCallbackHelper.dispatchResultToReceiver(new PageResult<>(data, 0, 0, 0));
             }
         }
     }
@@ -298,14 +318,14 @@ public abstract class PageKeyedDataSource<Key, Value> extends ContiguousDataSour
     final void dispatchLoadInitial(@Nullable Key key, int initialLoadSize, int pageSize,
             boolean enablePlaceholders, @NonNull Executor mainThreadExecutor,
             @NonNull PageResult.Receiver<Value> receiver) {
-        LoadInitialCallback<Key, Value> callback =
-                new LoadInitialCallback<>(this, enablePlaceholders, receiver);
+        LoadInitialCallbackImpl<Key, Value> callback =
+                new LoadInitialCallbackImpl<>(this, enablePlaceholders, receiver);
         loadInitial(new LoadInitialParams<Key>(initialLoadSize, enablePlaceholders), callback);
 
         // If initialLoad's callback is not called within the body, we force any following calls
         // to post to the UI thread. This constructor may be run on a background thread, but
         // after constructor, mutation must happen on UI thread.
-        callback.setPostExecutor(mainThreadExecutor);
+        callback.mCallbackHelper.setPostExecutor(mainThreadExecutor);
     }
 
 
@@ -316,7 +336,7 @@ public abstract class PageKeyedDataSource<Key, Value> extends ContiguousDataSour
         @Nullable Key key = getNextKey();
         if (key != null) {
             loadAfter(new LoadParams<>(key, pageSize),
-                    new LoadCallback<>(this, PageResult.APPEND, mainThreadExecutor, receiver));
+                    new LoadCallbackImpl<>(this, PageResult.APPEND, mainThreadExecutor, receiver));
         }
     }
 
@@ -327,7 +347,7 @@ public abstract class PageKeyedDataSource<Key, Value> extends ContiguousDataSour
         @Nullable Key key = getPreviousKey();
         if (key != null) {
             loadBefore(new LoadParams<>(key, pageSize),
-                    new LoadCallback<>(this, PageResult.PREPEND, mainThreadExecutor, receiver));
+                    new LoadCallbackImpl<>(this, PageResult.PREPEND, mainThreadExecutor, receiver));
         }
     }
 
@@ -388,4 +408,18 @@ public abstract class PageKeyedDataSource<Key, Value> extends ContiguousDataSour
      */
     public abstract void loadAfter(@NonNull LoadParams<Key> params,
             @NonNull LoadCallback<Key, Value> callback);
+
+    @NonNull
+    @Override
+    public final <ToValue> PageKeyedDataSource<Key, ToValue> mapByPage(
+            @NonNull Function<List<Value>, List<ToValue>> function) {
+        return new WrapperPageKeyedDataSource<>(this, function);
+    }
+
+    @NonNull
+    @Override
+    public final <ToValue> PageKeyedDataSource<Key, ToValue> map(
+            @NonNull Function<Value, ToValue> function) {
+        return mapByPage(createListFunction(function));
+    }
 }

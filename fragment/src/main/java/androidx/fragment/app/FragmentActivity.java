@@ -20,6 +20,7 @@ import static androidx.annotation.RestrictTo.Scope.LIBRARY_GROUP;
 
 import android.app.Activity;
 import android.arch.lifecycle.Lifecycle;
+import android.arch.lifecycle.LifecycleOwner;
 import android.arch.lifecycle.ViewModelStore;
 import android.arch.lifecycle.ViewModelStoreOwner;
 import android.content.Context;
@@ -31,16 +32,6 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.os.Parcelable;
-import androidx.annotation.CallSuper;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.annotation.RestrictTo;
-import androidx.collection.SparseArrayCompat;
-import androidx.loader.content.Loader;
-
-import androidx.core.app.ActivityCompat;
-import androidx.loader.app.LoaderManager;
-import androidx.core.app.SharedElementCallback;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -49,19 +40,33 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.Window;
 
+import androidx.annotation.CallSuper;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.annotation.RestrictTo;
+import androidx.collection.SparseArrayCompat;
+import androidx.core.app.ActivityCompat;
+import androidx.core.app.SharedElementCallback;
+import androidx.core.app.SupportActivity;
+import androidx.loader.app.LoaderManager;
+import androidx.loader.content.Loader;
+
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.Collection;
 
+import androidx.annotation.CallSuper;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.annotation.RestrictTo;
+import androidx.collection.SparseArrayCompat;
+import androidx.core.app.ActivityCompat;
+import androidx.core.app.SharedElementCallback;
+import androidx.loader.app.LoaderManager;
+
 /**
  * Base class for activities that want to use the support-based
- * {@link Fragment} and
- * {@link Loader} APIs.
- *
- * <p>When using this class as opposed to new platform's built-in fragment
- * and loader support, you must use the {@link #getSupportFragmentManager()}
- * and {@link #getSupportLoaderManager()} methods respectively to access
- * those features.
+ * {@link Fragment Fragments}.
  *
  * <p>Known limitations:</p>
  * <ul>
@@ -70,7 +75,7 @@ import java.util.Collection;
  * specify an ID (or tag) in the <code>&lt;fragment></code>.</p>
  * </ul>
  */
-public class FragmentActivity extends BaseFragmentActivityApi16 implements
+public class FragmentActivity extends SupportActivity implements
         ViewModelStoreOwner,
         ActivityCompat.OnRequestPermissionsResultCallback,
         ActivityCompat.RequestPermissionsRequestCodeValidator {
@@ -115,6 +120,19 @@ public class FragmentActivity extends BaseFragmentActivityApi16 implements
     boolean mRetaining;
 
     boolean mRequestedPermissionsFromFragment;
+
+    // We need to keep track of whether startIntentSenderForResult originated from a Fragment, so we
+    // can conditionally check whether the requestCode collides with our reserved ID space for the
+    // request index (see above). Unfortunately we can't just call
+    // super.startIntentSenderForResult(...) to bypass the check when the call didn't come from a
+    // fragment, since we need to use the ActivityCompat version for backward compatibility.
+    boolean mStartedIntentSenderFromFragment;
+    // We need to keep track of whether startActivityForResult originated from a Fragment, so we
+    // can conditionally check whether the requestCode collides with our reserved ID space for the
+    // request index (see above). Unfortunately we can't just call
+    // super.startActivityForResult(...) to bypass the check when the call didn't come from a
+    // fragment, since we need to use the ActivityCompat version for backward compatibility.
+    boolean mStartedActivityFromFragment;
 
     // A hint for the next candidate request index. Request indicies are ints between 0 and 2^16-1
     // which are encoded into the upper 16 bits of the requestCode for
@@ -373,6 +391,23 @@ public class FragmentActivity extends BaseFragmentActivityApi16 implements
     }
 
     @Override
+    public View onCreateView(View parent, String name, Context context, AttributeSet attrs) {
+        final View v = dispatchFragmentsOnCreateView(parent, name, context, attrs);
+        if (v == null) {
+            return super.onCreateView(parent, name, context, attrs);
+        }
+        return v;
+    }
+
+    @Override
+    public View onCreateView(String name, Context context, AttributeSet attrs) {
+        final View v = dispatchFragmentsOnCreateView(null, name, context, attrs);
+        if (v == null) {
+            return super.onCreateView(name, context, attrs);
+        }
+        return v;
+    }
+
     final View dispatchFragmentsOnCreateView(View parent, String name, Context context,
             AttributeSet attrs) {
         return mFragments.onCreateView(parent, name, context, attrs);
@@ -729,6 +764,11 @@ public class FragmentActivity extends BaseFragmentActivityApi16 implements
         return mFragments.getSupportFragmentManager();
     }
 
+    /**
+     * @deprecated Use
+     * {@link LoaderManager#getInstance(LifecycleOwner) LoaderManager.getInstance(this)}.
+     */
+    @Deprecated
     public LoaderManager getSupportLoaderManager() {
         return LoaderManager.getInstance(this);
     }
@@ -747,6 +787,59 @@ public class FragmentActivity extends BaseFragmentActivityApi16 implements
             }
         }
         super.startActivityForResult(intent, requestCode);
+    }
+
+    @Override
+    public void startActivityForResult(Intent intent, int requestCode,
+            @Nullable Bundle options) {
+        // If this was started from a Fragment we've already checked the upper 16 bits were not in
+        // use, and then repurposed them for the Fragment's index.
+        if (!mStartedActivityFromFragment) {
+            if (requestCode != -1) {
+                checkForValidRequestCode(requestCode);
+            }
+        }
+        super.startActivityForResult(intent, requestCode, options);
+    }
+
+    @Override
+    public void startIntentSenderForResult(IntentSender intent, int requestCode,
+            @Nullable Intent fillInIntent, int flagsMask, int flagsValues, int extraFlags)
+            throws IntentSender.SendIntentException {
+        // If this was started from a Fragment we've already checked the upper 16 bits were not in
+        // use, and then repurposed them for the Fragment's index.
+        if (!mStartedIntentSenderFromFragment) {
+            if (requestCode != -1) {
+                checkForValidRequestCode(requestCode);
+            }
+        }
+        super.startIntentSenderForResult(intent, requestCode, fillInIntent, flagsMask, flagsValues,
+                extraFlags);
+    }
+
+    @Override
+    public void startIntentSenderForResult(IntentSender intent, int requestCode,
+            @Nullable Intent fillInIntent, int flagsMask, int flagsValues, int extraFlags,
+            Bundle options) throws IntentSender.SendIntentException {
+        // If this was started from a Fragment we've already checked the upper 16 bits were not in
+        // use, and then repurposed them for the Fragment's index.
+        if (!mStartedIntentSenderFromFragment) {
+            if (requestCode != -1) {
+                checkForValidRequestCode(requestCode);
+            }
+        }
+        super.startIntentSenderForResult(intent, requestCode, fillInIntent, flagsMask, flagsValues,
+                extraFlags, options);
+    }
+
+    /**
+     * Checks whether the given request code is a valid code by masking it with 0xffff0000. Throws
+     * an {@link IllegalArgumentException} if the code is not valid.
+     */
+    static void checkForValidRequestCode(int requestCode) {
+        if ((requestCode & 0xffff0000) != 0) {
+            throw new IllegalArgumentException("Can only use lower 16 bits for requestCode");
+        }
     }
 
     @Override

@@ -27,10 +27,11 @@ import static androidx.core.app.NotificationCompat.GROUP_ALERT_SUMMARY;
 import android.app.Notification;
 import android.os.Build;
 import android.os.Bundle;
-import androidx.annotation.RestrictTo;
 import android.text.TextUtils;
 import android.util.SparseArray;
 import android.widget.RemoteViews;
+
+import androidx.annotation.RestrictTo;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -152,25 +153,28 @@ class NotificationCompatBuilder implements NotificationBuilderWithBuilderAccesso
             }
             mHeadsUpContentView = b.mHeadsUpContentView;
 
-            // Invisible actions should be stored in the extender so we need to check if one exists
-            // already.
-            Bundle carExtenderBundle =
-                    b.getExtras().getBundle(NotificationCompat.CarExtender.EXTRA_CAR_EXTENDER);
-            if (carExtenderBundle == null) {
-                carExtenderBundle = new Bundle();
+            if (b.mInvisibleActions.size() > 0) {
+                // Invisible actions should be stored in the extender so we need to check if one
+                // exists already.
+                Bundle carExtenderBundle =
+                        b.getExtras().getBundle(NotificationCompat.CarExtender.EXTRA_CAR_EXTENDER);
+                if (carExtenderBundle == null) {
+                    carExtenderBundle = new Bundle();
+                }
+                Bundle listBundle = new Bundle();
+                for (int i = 0; i < b.mInvisibleActions.size(); i++) {
+                    listBundle.putBundle(
+                            Integer.toString(i),
+                            NotificationCompatJellybean.getBundleForAction(
+                                    b.mInvisibleActions.get(i)));
+                }
+                carExtenderBundle.putBundle(
+                        NotificationCompat.CarExtender.EXTRA_INVISIBLE_ACTIONS, listBundle);
+                b.getExtras().putBundle(
+                        NotificationCompat.CarExtender.EXTRA_CAR_EXTENDER, carExtenderBundle);
+                mExtras.putBundle(
+                        NotificationCompat.CarExtender.EXTRA_CAR_EXTENDER, carExtenderBundle);
             }
-            Bundle listBundle = new Bundle();
-            for (int i = 0; i < b.mInvisibleActions.size(); i++) {
-                listBundle.putBundle(
-                        Integer.toString(i),
-                        NotificationCompatJellybean.getBundleForAction(b.mInvisibleActions.get(i)));
-            }
-            carExtenderBundle.putBundle(
-                    NotificationCompat.CarExtender.EXTRA_INVISIBLE_ACTIONS, listBundle);
-            b.getExtras().putBundle(
-                    NotificationCompat.CarExtender.EXTRA_CAR_EXTENDER, carExtenderBundle);
-            mExtras.putBundle(
-                    NotificationCompat.CarExtender.EXTRA_CAR_EXTENDER, carExtenderBundle);
         }
         if (Build.VERSION.SDK_INT >= 24) {
             mBuilder.setExtras(b.mExtras)

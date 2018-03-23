@@ -4,7 +4,6 @@ import androidx.build.LibraryVersions
 
 plugins {
     id("SupportAndroidLibraryPlugin")
-    id("androidx.tools.jetifier")
 }
 
 dependencies {
@@ -49,7 +48,7 @@ supportLibrary {
     name = "Android Car Support UI"
     publish = false
     mavenVersion = LibraryVersions.SUPPORT_LIBRARY
-    mavenGroup = LibraryGroups.SUPPORT
+    mavenGroup = LibraryGroups.CAR
     inceptionYear = "2017"
     description = "Android Car Support UI"
     java8Library = true

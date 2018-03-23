@@ -35,16 +35,6 @@ import android.os.Bundle;
 import android.os.Looper;
 import android.os.Parcel;
 import android.os.Parcelable;
-import androidx.annotation.CallSuper;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.annotation.RestrictTo;
-import androidx.annotation.StringRes;
-import androidx.loader.app.LoaderManager;
-import androidx.core.app.SharedElementCallback;
-import androidx.core.util.DebugUtils;
-import androidx.collection.SimpleArrayMap;
-import androidx.core.view.LayoutInflaterCompat;
 import android.util.AttributeSet;
 import android.util.SparseArray;
 import android.view.ContextMenu;
@@ -59,9 +49,31 @@ import android.view.ViewGroup;
 import android.view.animation.Animation;
 import android.widget.AdapterView;
 
+import androidx.annotation.CallSuper;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.annotation.RestrictTo;
+import androidx.annotation.StringRes;
+import androidx.collection.SimpleArrayMap;
+import androidx.core.app.SharedElementCallback;
+import androidx.core.util.DebugUtils;
+import androidx.core.view.LayoutInflaterCompat;
+import androidx.loader.app.LoaderManager;
+
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.lang.reflect.InvocationTargetException;
+
+import androidx.annotation.CallSuper;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.annotation.RestrictTo;
+import androidx.annotation.StringRes;
+import androidx.collection.SimpleArrayMap;
+import androidx.core.app.SharedElementCallback;
+import androidx.core.util.DebugUtils;
+import androidx.core.view.LayoutInflaterCompat;
+import androidx.loader.app.LoaderManager;
 
 /**
  * Static library support version of the framework's {@link android.app.Fragment}.
@@ -950,7 +962,7 @@ public class Fragment implements ComponentCallbacks, OnCreateContextMenuListener
      */
     public void setUserVisibleHint(boolean isVisibleToUser) {
         if (!mUserVisibleHint && isVisibleToUser && mState < STARTED
-                && mFragmentManager != null && isAdded()) {
+                && mFragmentManager != null && isAdded() && mIsCreated) {
             mFragmentManager.performPendingDeferredStart(this);
         }
         mUserVisibleHint = isVisibleToUser;
@@ -973,7 +985,11 @@ public class Fragment implements ComponentCallbacks, OnCreateContextMenuListener
 
     /**
      * Return the LoaderManager for this fragment.
+     *
+     * @deprecated Use
+     * {@link LoaderManager#getInstance(LifecycleOwner) LoaderManager.getInstance(this)}.
      */
+    @Deprecated
     public LoaderManager getLoaderManager() {
         return LoaderManager.getInstance(this);
     }

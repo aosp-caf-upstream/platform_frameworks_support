@@ -21,6 +21,12 @@ import android.graphics.Color;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.Editable;
+import android.text.method.KeyListener;
+import android.view.KeyEvent;
+import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputConnection;
+
 import androidx.annotation.AnyThread;
 import androidx.annotation.CheckResult;
 import androidx.annotation.ColorInt;
@@ -34,11 +40,6 @@ import androidx.annotation.RestrictTo;
 import androidx.annotation.VisibleForTesting;
 import androidx.collection.ArraySet;
 import androidx.core.util.Preconditions;
-import android.text.Editable;
-import android.text.method.KeyListener;
-import android.view.KeyEvent;
-import android.view.inputmethod.EditorInfo;
-import android.view.inputmethod.InputConnection;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -60,7 +61,9 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  * <pre><code>EmojiCompat.init(&#47;* a config instance *&#47;);</code></pre>
  * <p/>
  * It is suggested to make the initialization as early as possible in your app. Please check {@link
- * EmojiCompat.Config} for more configuration parameters.
+ * EmojiCompat.Config} for more configuration parameters. Once {@link #init(EmojiCompat.Config)} is
+ * called a singleton instance will be created. Any call after that will not create a new instance
+ * and will return immediately.
  * <p/>
  * During initialization information about emojis is loaded on a background thread. Before the
  * EmojiCompat instance is initialized, calls to functions such as {@link
@@ -229,7 +232,9 @@ public class EmojiCompat {
     /**
      * Initialize the singleton instance with a configuration. When used on devices running API 18
      * or below, the singleton instance is immediately moved into {@link #LOAD_STATE_SUCCEEDED}
-     * state without loading any metadata.
+     * state without loading any metadata. When called for the first time, the library will create
+     * the singleton instance and any call after that will not create a new instance and return
+     * immediately.
      *
      * @see EmojiCompat.Config
      */

@@ -16,6 +16,9 @@
 
 package androidx.recyclerview.widget;
 
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.core.IsEqual.equalTo;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
@@ -35,7 +38,6 @@ import android.content.Context;
 import android.os.Build;
 import android.os.Parcelable;
 import android.os.SystemClock;
-import androidx.annotation.NonNull;
 import android.support.test.InstrumentationRegistry;
 import android.support.test.filters.SdkSuppress;
 import android.support.test.filters.SmallTest;
@@ -44,6 +46,8 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
+
+import androidx.annotation.NonNull;
 
 import org.junit.After;
 import org.junit.Before;
@@ -1302,5 +1306,37 @@ public class RecyclerViewCacheTest {
 
         // ... but there should be two new binds
         assertEquals(4, ((InnerAdapter) innerRecyclerView.getAdapter()).mItemsBound);
+    }
+
+    @Test
+    public void setRecycledViewPool_followedByTwoSetAdapters_clearsRecycledViewPool() {
+        RecyclerView.ViewHolder viewHolder = new RecyclerView.ViewHolder(new View(getContext())) {};
+        viewHolder.mItemViewType = 123;
+        RecyclerView.Adapter adapter = mock(RecyclerView.Adapter.class);
+        RecyclerView recyclerView = new RecyclerView(getContext());
+        RecyclerView.RecycledViewPool recycledViewPool = new RecyclerView.RecycledViewPool();
+        recycledViewPool.putRecycledView(viewHolder);
+
+        recyclerView.setRecycledViewPool(recycledViewPool);
+        recyclerView.setAdapter(adapter);
+        recyclerView.setAdapter(adapter);
+
+        assertThat(recycledViewPool.getRecycledViewCount(123), is(equalTo(0)));
+    }
+
+    @Test
+    public void setRecycledViewPool_followedByTwoSwapAdapters_doesntClearRecycledViewPool() {
+        RecyclerView.ViewHolder viewHolder = new RecyclerView.ViewHolder(new View(getContext())) {};
+        viewHolder.mItemViewType = 123;
+        RecyclerView.Adapter adapter = mock(RecyclerView.Adapter.class);
+        RecyclerView recyclerView = new RecyclerView(getContext());
+        RecyclerView.RecycledViewPool recycledViewPool = new RecyclerView.RecycledViewPool();
+        recycledViewPool.putRecycledView(viewHolder);
+
+        recyclerView.setRecycledViewPool(recycledViewPool);
+        recyclerView.swapAdapter(adapter, false);
+        recyclerView.swapAdapter(adapter, false);
+
+        assertThat(recycledViewPool.getRecycledViewCount(123), is(equalTo(1)));
     }
 }
