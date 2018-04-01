@@ -27,7 +27,7 @@ import static android.app.slice.SliceItem.FORMAT_INT;
 import static android.app.slice.SliceItem.FORMAT_SLICE;
 import static android.app.slice.SliceItem.FORMAT_TEXT;
 
-import static androidx.slice.core.SliceHints.HINT_KEY_WORDS;
+import static androidx.slice.core.SliceHints.HINT_KEYWORDS;
 import static androidx.slice.core.SliceHints.HINT_LAST_UPDATED;
 import static androidx.slice.core.SliceHints.HINT_TTL;
 
@@ -39,6 +39,8 @@ import androidx.annotation.RestrictTo;
 import androidx.slice.Slice;
 import androidx.slice.SliceItem;
 import androidx.slice.SliceMetadata;
+import androidx.slice.core.SliceAction;
+import androidx.slice.core.SliceActionImpl;
 import androidx.slice.core.SliceQuery;
 
 import java.util.ArrayList;
@@ -81,7 +83,7 @@ public class ListContent {
         for (int i = 0; i < children.size(); i++) {
             final SliceItem child = children.get(i);
             final String format = child.getFormat();
-            boolean isNonRowContent = child.hasAnyHints(HINT_ACTIONS, HINT_SEE_MORE, HINT_KEY_WORDS,
+            boolean isNonRowContent = child.hasAnyHints(HINT_ACTIONS, HINT_SEE_MORE, HINT_KEYWORDS,
                     HINT_TTL, HINT_LAST_UPDATED);
             if (!isNonRowContent && (FORMAT_ACTION.equals(format) || FORMAT_SLICE.equals(format))) {
                 if (mHeaderItem == null && !child.hasHint(HINT_LIST_ITEM)) {
@@ -202,19 +204,64 @@ public class ListContent {
     }
 
     /**
+     * @return the type of template that the header represents.
+     */
+    public int getHeaderTemplateType() {
+        if (mHeaderItem != null) {
+            if (mHeaderItem.hasHint(HINT_HORIZONTAL)) {
+                return EventInfo.ROW_TYPE_GRID;
+            } else {
+                RowContent rc = new RowContent(mContext, mHeaderItem, true /* isHeader */);
+                SliceItem actionItem = rc.getPrimaryAction();
+                SliceAction primaryAction = null;
+                if (actionItem != null) {
+                    primaryAction = new SliceActionImpl(actionItem);
+                }
+                if (rc.getRange() != null) {
+                    return FORMAT_ACTION.equals(rc.getRange().getFormat())
+                            ? EventInfo.ROW_TYPE_SLIDER
+                            : EventInfo.ROW_TYPE_PROGRESS;
+                } else if (primaryAction != null && primaryAction.isToggle()) {
+                    return EventInfo.ROW_TYPE_TOGGLE;
+                } else if (mSliceActions != null) {
+                    for (int i = 0; i < mSliceActions.size(); i++) {
+                        if (new SliceActionImpl(mSliceActions.get(i)).isToggle()) {
+                            return EventInfo.ROW_TYPE_TOGGLE;
+                        }
+                    }
+                    return EventInfo.ROW_TYPE_LIST;
+                } else {
+                    return rc.getToggleItems().size() > 0
+                            ? EventInfo.ROW_TYPE_TOGGLE
+                            : EventInfo.ROW_TYPE_LIST;
+                }
+            }
+        }
+        return EventInfo.ROW_TYPE_LIST;
+    }
+
+    /**
      * @return the primary action for this list; i.e. action on the header or first row.
      */
     @Nullable
     public SliceItem getPrimaryAction() {
-        RowContent rc = new RowContent(mContext, mHeaderItem, false);
-        return rc.getPrimaryAction();
+        if (mHeaderItem != null) {
+            if (mHeaderItem.hasHint(HINT_HORIZONTAL)) {
+                GridContent gc = new GridContent(mContext, mHeaderItem);
+                return gc.getContentIntent();
+            } else {
+                RowContent rc = new RowContent(mContext, mHeaderItem, false);
+                return rc.getPrimaryAction();
+            }
+        }
+        return null;
     }
 
     @Nullable
     private static SliceItem findHeaderItem(@NonNull Slice slice) {
         // See if header is specified
         String[] nonHints = new String[] {HINT_LIST_ITEM, HINT_SHORTCUT, HINT_ACTIONS,
-                HINT_KEY_WORDS, HINT_TTL, HINT_LAST_UPDATED};
+                HINT_KEYWORDS, HINT_TTL, HINT_LAST_UPDATED};
         SliceItem header = SliceQuery.find(slice, FORMAT_SLICE, null, nonHints);
         if (header != null && isValidHeader(header)) {
             return header;
@@ -239,7 +286,7 @@ public class ListContent {
 
     private static boolean isValidHeader(SliceItem sliceItem) {
         if (FORMAT_SLICE.equals(sliceItem.getFormat()) && !sliceItem.hasAnyHints(HINT_LIST_ITEM,
-                HINT_ACTIONS, HINT_KEY_WORDS)) {
+                HINT_ACTIONS, HINT_KEYWORDS)) {
              // Minimum valid header is a slice with text
             SliceItem item = SliceQuery.find(sliceItem, FORMAT_TEXT, (String) null, null);
             return item != null;

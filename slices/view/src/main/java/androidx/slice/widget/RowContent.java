@@ -31,7 +31,7 @@ import static android.app.slice.SliceItem.FORMAT_SLICE;
 import static android.app.slice.SliceItem.FORMAT_TEXT;
 import static android.app.slice.SliceItem.FORMAT_TIMESTAMP;
 
-import static androidx.slice.core.SliceHints.HINT_KEY_WORDS;
+import static androidx.slice.core.SliceHints.HINT_KEYWORDS;
 import static androidx.slice.core.SliceHints.HINT_LAST_UPDATED;
 import static androidx.slice.core.SliceHints.HINT_TTL;
 import static androidx.slice.core.SliceHints.SUBTYPE_RANGE;
@@ -44,6 +44,8 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RestrictTo;
 import androidx.slice.SliceItem;
+import androidx.slice.core.SliceAction;
+import androidx.slice.core.SliceActionImpl;
 import androidx.slice.core.SliceQuery;
 import androidx.slice.view.R;
 
@@ -65,6 +67,7 @@ public class RowContent {
     private SliceItem mSubtitleItem;
     private SliceItem mSummaryItem;
     private ArrayList<SliceItem> mEndItems = new ArrayList<>();
+    private ArrayList<SliceAction> mToggleItems = new ArrayList<>();
     private SliceItem mRange;
     private SliceItem mContentDescr;
     private boolean mEndItemsContainAction;
@@ -72,11 +75,14 @@ public class RowContent {
     private int mLineCount = 0;
     private int mMaxHeight;
     private int mMinHeight;
+    private int mMaxRangeHeight;
 
     public RowContent(Context context, SliceItem rowSlice, boolean isHeader) {
         populate(rowSlice, isHeader);
         mMaxHeight = context.getResources().getDimensionPixelSize(R.dimen.abc_slice_row_max_height);
         mMinHeight = context.getResources().getDimensionPixelSize(R.dimen.abc_slice_row_min_height);
+        mMaxRangeHeight = context.getResources().getDimensionPixelSize(
+                R.dimen.abc_slice_row_range_max_height);
     }
 
     /**
@@ -92,7 +98,7 @@ public class RowContent {
         // Find primary action first (otherwise filtered out of valid row items)
         String[] hints = new String[] {HINT_SHORTCUT, HINT_TITLE};
         mPrimaryAction = SliceQuery.find(rowSlice, FORMAT_SLICE, hints,
-                new String[] { HINT_ACTIONS, HINT_KEY_WORDS } /* nonHints */);
+                new String[] { HINT_ACTIONS, HINT_KEYWORDS} /* nonHints */);
 
         if (mPrimaryAction == null && FORMAT_ACTION.equals(rowSlice.getFormat())
                 && rowSlice.getSlice().getItems().size() == 1) {
@@ -164,15 +170,24 @@ public class RowContent {
                     }
                 } else if (desiredFormat == null) {
                     desiredFormat = item.getFormat();
-                    mEndItems.add(item);
-                    mEndItemsContainAction |= isAction;
+                    processContent(item, isAction);
                 } else if (desiredFormat.equals(item.getFormat())) {
-                    mEndItems.add(item);
-                    mEndItemsContainAction |= isAction;
+                    processContent(item, isAction);
                 }
             }
         }
         return isValid();
+    }
+
+    private void processContent(@NonNull SliceItem item, boolean isAction) {
+        if (isAction) {
+            SliceAction ac = new SliceActionImpl(item);
+            if (ac.isToggle()) {
+                mToggleItems.add(ac);
+            }
+        }
+        mEndItems.add(item);
+        mEndItemsContainAction |= isAction;
     }
 
     /**
@@ -236,6 +251,13 @@ public class RowContent {
     }
 
     /**
+     * @return a list of toggles associated with this row.
+     */
+    public ArrayList<SliceAction> getToggleItems() {
+        return mToggleItems;
+    }
+
+    /**
      * @return the content description to use for this row.
      */
     @Nullable
@@ -261,16 +283,22 @@ public class RowContent {
      * @return the height to display a row at when it is used as a small template.
      */
     public int getSmallHeight() {
-        return mMaxHeight;
+        return (getRange() != null && mLineCount > 1)
+                ? mMaxRangeHeight
+                : mMaxHeight;
     }
 
     /**
      * @return the height the content in this template requires to be displayed.
      */
     public int getActualHeight() {
-        return isValid()
-                ? (getLineCount() > 1 || mIsHeader) ? mMaxHeight : mMinHeight
-                : 0;
+        if (!isValid()) {
+            return 0;
+        }
+        if (getRange() != null && mLineCount > 1) {
+            return mMaxRangeHeight;
+        }
+        return (getLineCount() > 1 || mIsHeader) ? mMaxHeight : mMinHeight;
     }
 
     private static boolean hasText(SliceItem textSlice) {
@@ -342,7 +370,7 @@ public class RowContent {
      * @return whether this item is valid content to display in a row.
      */
     private static boolean isValidRowContent(SliceItem slice, SliceItem item) {
-        if (item.hasAnyHints(HINT_KEY_WORDS, HINT_TTL, HINT_LAST_UPDATED)) {
+        if (item.hasAnyHints(HINT_KEYWORDS, HINT_TTL, HINT_LAST_UPDATED)) {
             return false;
         }
         if (FORMAT_SLICE.equals(item.getFormat()) && !item.hasHint(HINT_SHORTCUT)) {
