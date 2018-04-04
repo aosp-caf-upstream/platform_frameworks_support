@@ -18,8 +18,12 @@ package androidx.slice.core;
 
 import static androidx.annotation.RestrictTo.Scope.LIBRARY_GROUP;
 
+import static java.lang.annotation.RetentionPolicy.SOURCE;
+
 import androidx.annotation.IntDef;
 import androidx.annotation.RestrictTo;
+
+import java.lang.annotation.Retention;
 
 /**
  * Temporary class to contain hint constants for slices to be used.
@@ -78,9 +82,12 @@ public class SliceHints {
      */
     public static final String SUBTYPE_MILLIS = "millis";
 
+    public static final String HINT_PERMISSION_REQUEST = "permission_request";
+
     @IntDef({
             LARGE_IMAGE, SMALL_IMAGE, ICON_IMAGE, UNKNOWN_IMAGE
     })
+    @Retention(SOURCE)
     public @interface ImageMode{}
 
     /**
@@ -104,4 +111,7 @@ public class SliceHints {
      * Constant representing infinity.
      */
     public static final long INFINITY = -1;
+
+    private SliceHints() {
+    }
 }
