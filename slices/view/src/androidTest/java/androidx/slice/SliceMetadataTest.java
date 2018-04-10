@@ -588,6 +588,16 @@ public class SliceMetadataTest {
         assertEquals(0, retrievedLastUpdated2);
     }
 
+    @Test
+    public void testIsPermissionSlice() {
+        Uri uri = Uri.parse("content://pkg/slice");
+        Slice permissionSlice =
+                SliceProvider.createPermissionSlice(mContext, uri, mContext.getPackageName());
+
+        SliceMetadata metadata = SliceMetadata.from(mContext, permissionSlice);
+        assertEquals(true, metadata.isPermissionSlice());
+    }
+
     private PendingIntent getIntent(String action) {
         Intent intent = new Intent(action);
         intent.setClassName(mContext.getPackageName(), SliceRenderActivity.class.getName());

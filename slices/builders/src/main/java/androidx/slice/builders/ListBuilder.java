@@ -28,6 +28,7 @@ import androidx.annotation.ColorInt;
 import androidx.annotation.IntDef;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
 import androidx.annotation.RestrictTo;
 import androidx.core.graphics.drawable.IconCompat;
 import androidx.core.util.Consumer;
@@ -37,6 +38,8 @@ import androidx.slice.builders.impl.ListBuilderV1Impl;
 import androidx.slice.builders.impl.TemplateBuilderImpl;
 import androidx.slice.core.SliceHints;
 
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.util.List;
 
 
@@ -123,6 +126,7 @@ public class ListBuilder extends TemplateSliceBuilder {
     @IntDef({
             LARGE_IMAGE, SMALL_IMAGE, ICON_IMAGE, UNKNOWN_IMAGE
     })
+    @Retention(RetentionPolicy.SOURCE)
     public @interface ImageMode{}
 
     /**
@@ -712,6 +716,7 @@ public class ListBuilder extends TemplateSliceBuilder {
          * @deprecated TO BE REMOVED
          */
         @NonNull
+        @RequiresApi(23)
         public InputRangeBuilder setThumb(@NonNull Icon thumb) {
             return setThumb(IconCompat.createFromIcon(thumb));
         }
@@ -846,6 +851,7 @@ public class ListBuilder extends TemplateSliceBuilder {
          */
         @Deprecated
         @NonNull
+        @RequiresApi(23)
         public RowBuilder setTitleItem(@NonNull Icon icon) {
             return setTitleItem(icon, ICON_IMAGE);
         }
@@ -855,6 +861,7 @@ public class ListBuilder extends TemplateSliceBuilder {
          */
         @Deprecated
         @NonNull
+        @RequiresApi(23)
         public RowBuilder setTitleItem(@Nullable Icon icon, boolean isLoading) {
             return setTitleItem(icon, ICON_IMAGE, isLoading);
         }
@@ -863,6 +870,7 @@ public class ListBuilder extends TemplateSliceBuilder {
          * @deprecated TO BE REMOVED.
          */
         @Deprecated
+        @RequiresApi(23)
         public RowBuilder setTitleItem(@NonNull Icon icon, @ImageMode int imageMode) {
             mImpl.setTitleItem(IconCompat.createFromIcon(icon), imageMode, false /* isLoading */);
             return this;
@@ -873,6 +881,7 @@ public class ListBuilder extends TemplateSliceBuilder {
          */
         @Deprecated
         @NonNull
+        @RequiresApi(23)
         public RowBuilder setTitleItem(@Nullable Icon icon, @ImageMode int imageMode,
                 boolean isLoading) {
             mImpl.setTitleItem(IconCompat.createFromIcon(icon), imageMode,
@@ -1053,6 +1062,7 @@ public class ListBuilder extends TemplateSliceBuilder {
          */
         @Deprecated
         @NonNull
+        @RequiresApi(23)
         public RowBuilder addEndItem(@NonNull Icon icon) {
             return addEndItem(icon, ICON_IMAGE, false /* isLoading */);
         }
@@ -1062,6 +1072,7 @@ public class ListBuilder extends TemplateSliceBuilder {
          */
         @Deprecated
         @NonNull
+        @RequiresApi(23)
         public RowBuilder addEndItem(@NonNull Icon icon, boolean isLoading) {
             return addEndItem(icon, ICON_IMAGE, isLoading);
         }
@@ -1071,6 +1082,7 @@ public class ListBuilder extends TemplateSliceBuilder {
          */
         @Deprecated
         @NonNull
+        @RequiresApi(23)
         public RowBuilder addEndItem(@NonNull Icon icon, @ImageMode int imageMode) {
             return addEndItem(icon, imageMode, false /* isLoading */);
         }
@@ -1080,6 +1092,7 @@ public class ListBuilder extends TemplateSliceBuilder {
          */
         @Deprecated
         @NonNull
+        @RequiresApi(23)
         public RowBuilder addEndItem(@Nullable Icon icon, @ImageMode int imageMode,
                 boolean isLoading) {
             if (mHasEndActionOrToggle) {

@@ -36,6 +36,7 @@ import android.text.style.ForegroundColorSpan;
 
 import androidx.core.graphics.drawable.IconCompat;
 import androidx.slice.Slice;
+import androidx.slice.SliceProvider;
 import androidx.slice.builders.GridRowBuilder;
 import androidx.slice.builders.ListBuilder;
 import androidx.slice.builders.MessagingSliceBuilder;
@@ -58,7 +59,7 @@ public class SliceCreator {
 
     public static final String[] URI_PATHS = {"message", "wifi", "wifi2", "note", "ride",
             "ride-ttl", "toggle", "toggle2", "contact", "gallery", "subscription", "subscription2",
-            "weather", "reservation", "inputrange", "range"};
+            "weather", "reservation", "inputrange", "range", "permission"};
 
     private final Context mContext;
 
@@ -116,6 +117,8 @@ public class SliceCreator {
                 return createStarRatingInputRange(sliceUri);
             case "/range":
                 return createDownloadProgressRange(sliceUri);
+            case "/permission":
+                return createPermissionSlice(sliceUri);
         }
         throw new IllegalArgumentException("Unknown uri " + sliceUri);
     }
@@ -472,11 +475,11 @@ public class SliceCreator {
                 .build();
     }
 
-
     private Slice createStarRatingInputRange(Uri sliceUri) {
         IconCompat icon = IconCompat.createWithResource(getContext(), R.drawable.ic_star_on);
         SliceAction primaryAction =
-                new SliceAction(getBroadcastIntent(ACTION_TOAST, "open star rating"), icon, "Rate");
+                new SliceAction(getBroadcastIntent(ACTION_TOAST, "open star rating"), icon,
+                        "Rate");
         ListBuilder lb = new ListBuilder(getContext(), sliceUri, INFINITY);
         return lb.setColor(0xffff4081)
                 .addInputRange(new ListBuilder.InputRangeBuilder(lb)
@@ -495,7 +498,8 @@ public class SliceCreator {
         IconCompat icon = IconCompat.createWithResource(getContext(), R.drawable.ic_star_on);
         SliceAction primaryAction =
                 new SliceAction(
-                        getBroadcastIntent(ACTION_TOAST, "open download"), icon, "Download");
+                        getBroadcastIntent(ACTION_TOAST, "open download"), icon,
+                        "Download");
         ListBuilder lb = new ListBuilder(getContext(), sliceUri, INFINITY);
         return lb.setColor(0xffff4081)
                 .addRange(new ListBuilder.RangeBuilder(lb)
@@ -505,6 +509,11 @@ public class SliceCreator {
                         .setValue(75)
                         .setPrimaryAction(primaryAction))
                 .build();
+    }
+
+    private Slice createPermissionSlice(Uri uri) {
+        return SliceProvider.createPermissionSlice(getContext(), uri,
+                getContext().getPackageName());
     }
 
     private PendingIntent getIntent(String action) {
