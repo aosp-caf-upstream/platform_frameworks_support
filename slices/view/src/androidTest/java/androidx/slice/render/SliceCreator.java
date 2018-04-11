@@ -126,7 +126,7 @@ public class SliceCreator {
     private Slice createWeather(Uri sliceUri) {
         SliceAction primaryAction = new SliceAction(getBroadcastIntent(ACTION_TOAST,
                 "open weather app"),
-                IconCompat.createWithResource(getContext(), R.drawable.weather_1),
+                IconCompat.createWithResource(getContext(), R.drawable.weather_1), SMALL_IMAGE,
                 "Weather is happening!");
         ListBuilder b = new ListBuilder(getContext(), sliceUri, -TimeUnit.HOURS.toMillis(8));
         GridRowBuilder gb = new GridRowBuilder(b);
@@ -486,9 +486,10 @@ public class SliceCreator {
                         .setTitle("Star rating")
                         .setSubtitle("Pick a rating from 0 to 5")
                         .setThumb(icon)
+                        .setMin(5)
                         .setInputAction(getBroadcastIntent(ACTION_TOAST, "range changed"))
-                        .setMax(5)
-                        .setValue(3)
+                        .setMax(10)
+                        .setValue(7)
                         .setPrimaryAction(primaryAction)
                         .setContentDescription("Slider for star ratings"))
                 .build();

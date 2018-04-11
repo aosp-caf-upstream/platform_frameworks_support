@@ -102,12 +102,20 @@ public class ListContent {
     }
 
     /**
+     * Expects the provided list of items to be filtered (i.e. only things that can be turned into
+     * GridContent or RowContent) and in order (i.e. first item could be a header).
+     *
      * @return the total height of all the rows contained in the provided list.
      */
     public static int getListHeight(Context context, List<SliceItem> listItems) {
         int height = 0;
+        boolean hasRealHeader = false;
+        if (listItems.size() > 0) {
+            SliceItem maybeHeader = listItems.get(0);
+            hasRealHeader = !maybeHeader.hasAnyHints(HINT_LIST_ITEM, HINT_HORIZONTAL);
+        }
         for (int i = 0; i < listItems.size(); i++) {
-            height += getHeight(context, listItems.get(i), i == 0 /* isHeader */);
+            height += getHeight(context, listItems.get(i), i == 0 && hasRealHeader /* isHeader */);
         }
         return height;
     }
@@ -298,9 +306,12 @@ public class ListContent {
         return null;
     }
 
-    private static boolean isValidHeader(SliceItem sliceItem) {
+    /**
+     * @return whether the provided slice item is a valid header.
+     */
+    public static boolean isValidHeader(SliceItem sliceItem) {
         if (FORMAT_SLICE.equals(sliceItem.getFormat()) && !sliceItem.hasAnyHints(HINT_LIST_ITEM,
-                HINT_ACTIONS, HINT_KEYWORDS)) {
+                HINT_ACTIONS, HINT_KEYWORDS, HINT_SEE_MORE)) {
              // Minimum valid header is a slice with text
             SliceItem item = SliceQuery.find(sliceItem, FORMAT_TEXT, (String) null, null);
             return item != null;
