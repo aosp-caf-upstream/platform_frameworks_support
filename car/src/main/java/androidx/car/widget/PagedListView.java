@@ -268,6 +268,11 @@ public class PagedListView extends FrameLayout {
         mRecyclerView.addOnScrollListener(mRecyclerViewOnScrollListener);
         mRecyclerView.getRecycledViewPool().setMaxRecycledViews(0, 12);
 
+        if (a.getBoolean(R.styleable.PagedListView_verticallyCenterListContent, false)) {
+            // Setting the height of wrap_content allows the RecyclerView to center itself.
+            mRecyclerView.getLayoutParams().height = ViewGroup.LayoutParams.WRAP_CONTENT;
+        }
+
         int defaultGutterSize = getResources().getDimensionPixelSize(R.dimen.car_margin);
         mGutterSize = a.getDimensionPixelSize(R.styleable.PagedListView_gutterSize,
                 defaultGutterSize);
@@ -354,6 +359,12 @@ public class PagedListView extends FrameLayout {
         Drawable downButtonIcon = a.getDrawable(R.styleable.PagedListView_downButtonIcon);
         if (downButtonIcon != null) {
             setDownButtonIcon(downButtonIcon);
+        }
+
+        // Using getResourceId() over getColor() because setScrollbarColor() expects a color resId.
+        int scrollBarColor = a.getResourceId(R.styleable.PagedListView_scrollBarColor, -1);
+        if (scrollBarColor != -1) {
+            setScrollbarColor(scrollBarColor);
         }
 
         mScrollBarView.setVisibility(mScrollBarEnabled ? VISIBLE : GONE);
