@@ -21,6 +21,7 @@ import androidx.room.Embedded
 import androidx.room.Ignore
 import androidx.room.Relation
 import androidx.room.ext.KotlinMetadataProcessor
+import androidx.room.ext.extendsBoundOrSelf
 import androidx.room.ext.getAllFieldsIncludingPrivateSupers
 import androidx.room.ext.getAnnotationValue
 import androidx.room.ext.getAsString
@@ -363,8 +364,9 @@ class PojoProcessor(
 
     private fun processEmbeddedField(
             declaredType: DeclaredType?, variableElement: VariableElement): EmbeddedField? {
-
-        val asTypeElement = MoreTypes.asTypeElement(variableElement.asType())
+        val asMemberType = MoreTypes.asMemberOf(
+            context.processingEnv.typeUtils, declaredType, variableElement)
+        val asTypeElement = MoreTypes.asTypeElement(asMemberType)
 
         if (detectReferenceRecursion(asTypeElement)) {
             return null
@@ -378,10 +380,7 @@ class PojoProcessor(
         val embeddedField = Field(
                 variableElement,
                 variableElement.simpleName.toString(),
-                type = context
-                        .processingEnv
-                        .typeUtils
-                        .asMemberOf(declaredType, variableElement),
+                type = asMemberType,
                 affinity = null,
                 parent = parent)
         val subParent = EmbeddedField(
@@ -436,7 +435,7 @@ class PojoProcessor(
             context.logger.e(relationElement, ProcessorErrors.RELATION_NOT_COLLECTION)
             return null
         }
-        val typeArg = declared.typeArguments.first()
+        val typeArg = declared.typeArguments.first().extendsBoundOrSelf()
         if (typeArg.kind == TypeKind.ERROR) {
             context.logger.e(MoreTypes.asTypeElement(typeArg), CANNOT_FIND_TYPE)
             return null

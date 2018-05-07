@@ -15,6 +15,7 @@
  */
 
 package androidx.room.integration.testapp.vo;
+
 import androidx.room.Embedded;
 
 public class UserAndPet {

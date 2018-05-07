@@ -20,6 +20,7 @@ import android.app.Dialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.os.Bundle;
+import android.text.TextUtils;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.View;
@@ -27,9 +28,11 @@ import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
 import android.view.Window;
 import android.view.WindowManager;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.StringRes;
 import androidx.car.R;
 import androidx.car.widget.DayNightStyle;
 import androidx.car.widget.ListItem;
@@ -56,10 +59,15 @@ import java.util.List;
 public class CarListDialog extends Dialog {
     private static final String TAG = "CarListDialog";
 
+    @Nullable
+    private final CharSequence mTitle;
+
     private ListItemAdapter mAdapter;
     private final int mInitialPosition;
     private PagedListView mList;
     private PagedScrollBarView mScrollBarView;
+
+    @Nullable
     private final DialogInterface.OnClickListener mOnClickListener;
 
     /** Flag for if a touch on the scrim of the dialog will dismiss it. */
@@ -76,20 +84,20 @@ public class CarListDialog extends Dialog {
                 }
             };
 
-    private CarListDialog(Context context, String[] items, int initialPosition,
-            OnClickListener listener) {
+    private CarListDialog(Context context, Builder builder) {
         super(context, getDialogTheme(context));
-        mInitialPosition = initialPosition;
-        mOnClickListener = listener;
-        initializeAdapter(items);
+        mInitialPosition = builder.mInitialPosition;
+        mOnClickListener = builder.mOnClickListener;
+        mTitle = builder.mTitle;
+        initializeAdapter(builder.mItems);
     }
 
     @Override
     public void setTitle(CharSequence title) {
-        // Ideally this method should not exist; the list dialog does not support a title.
-        // Unfortunately, this method is defined with the Dialog itself and is public. So, throw
-        // an error if this method is ever called.
-        throw new UnsupportedOperationException("Title is not supported in the CarListDialog");
+        // Ideally this method should be private; the dialog should only be modifiable through the
+        // Builder. Unfortunately, this method is defined with the Dialog itself and is public.
+        // So, throw an error if this method is ever called.
+        throw new UnsupportedOperationException("Title should only be set from the Builder");
     }
 
     /**
@@ -120,8 +128,15 @@ public class CarListDialog extends Dialog {
         // listen for clicks and dismiss the dialog when necessary.
         window.findViewById(R.id.container).setOnClickListener(v -> handleTouchOutside());
 
+        initializeTitle();
         initializeList();
         initializeScrollbar();
+    }
+
+    private void initializeTitle() {
+        TextView titleView = getWindow().findViewById(R.id.title);
+        titleView.setText(mTitle);
+        titleView.setVisibility(!TextUtils.isEmpty(mTitle) ? View.VISIBLE : View.GONE);
     }
 
     @Override
@@ -285,6 +300,8 @@ public class CarListDialog extends Dialog {
      */
     public static final class Builder {
         private final Context mContext;
+
+        private CharSequence mTitle;
         private int mInitialPosition;
         private String[] mItems;
         private DialogInterface.OnClickListener mOnClickListener;
@@ -300,6 +317,28 @@ public class CarListDialog extends Dialog {
          */
         public Builder(Context context) {
             mContext = context;
+        }
+
+        /**
+         * Sets the title of the dialog to be the given string resource.
+         *
+         * @param titleId The resource id of the string to be used as the title.
+         * @return This {@code Builder} object to allow for chaining of calls.
+         */
+        public Builder setTitle(@StringRes int titleId) {
+            mTitle = mContext.getString(titleId);
+            return this;
+        }
+
+        /**
+         * Sets the title of the dialog for be the given string.
+         *
+         * @param title The string to be used as the title.
+         * @return This {@code Builder} object to allow for chaining of calls.
+         */
+        public Builder setTitle(CharSequence title) {
+            mTitle = title;
+            return this;
         }
 
         /**
@@ -404,11 +443,7 @@ public class CarListDialog extends Dialog {
                         + "items in the list.");
             }
 
-            CarListDialog dialog = new CarListDialog(
-                    mContext,
-                    mItems,
-                    mInitialPosition,
-                    mOnClickListener);
+            CarListDialog dialog = new CarListDialog(mContext, /* builder= */ this);
 
             dialog.setCancelable(mCancelable);
             dialog.setCanceledOnTouchOutside(mCancelable);

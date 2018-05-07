@@ -65,6 +65,20 @@ class SupportAndroidLibraryPlugin : Plugin<Project> {
 
             VersionFileWriterTask.setUpAndroidLibrary(project, library)
             DiffAndDocs.registerAndroidProject(project, library, supportLibraryExtension)
+
+            library.libraryVariants.all { libraryVariant ->
+                if (libraryVariant.getBuildType().getName().equals("debug")) {
+                    @Suppress("DEPRECATION")
+                    val javaCompile = libraryVariant.javaCompile
+                    if (supportLibraryExtension.failOnUncheckedWarnings) {
+                        javaCompile.options.compilerArgs.add("-Xlint:unchecked")
+                    }
+                    if (supportLibraryExtension.failOnDeprecationWarnings) {
+                        javaCompile.options.compilerArgs.add("-Xlint:deprecation")
+                    }
+                    javaCompile.options.compilerArgs.add("-Werror")
+                }
+            }
         }
 
         project.apply(mapOf("plugin" to "com.android.library"))
@@ -93,8 +107,6 @@ class SupportAndroidLibraryPlugin : Plugin<Project> {
                 // the classpath. We do not do this for non-"core" projects as they need to
                 // depend on the Maven coordinate variant.
                 configuration.resolutionStrategy.dependencySubstitution.apply {
-                    substitute(module("com.android.support:support-annotations"))
-                            .with(project(":annotation"))
                     substitute(module("androidx.annotation:annotation"))
                             .with(project(":annotation"))
                 }

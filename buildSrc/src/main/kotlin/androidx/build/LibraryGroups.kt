@@ -47,6 +47,7 @@ object LibraryGroups {
     const val LOCALBROADCASTMANAGER = "androidx.localbroadcastmanager"
     const val MEDIA = "androidx.media"
     const val MEDIAROUTER = "androidx.mediarouter"
+    const val MEDIAWIDGET = "androidx.mediawidget"
     const val PALETTE = "androidx.palette"
     const val PERCENTLAYOUT = "androidx.percentlayout"
     const val PREFERENCE = "androidx.preference"
@@ -69,6 +70,7 @@ object LibraryGroups {
     const val LIFECYCLE = "androidx.lifecycle"
     const val ARCH_CORE = "androidx.arch.core"
     const val PAGING = "androidx.paging"
-    const val NAVIGATION = "androidx.navigation"
+    const val NAVIGATION = "android.arch.navigation"
     const val JETIFIER = "com.android.tools.build.jetifier"
+    const val WORKMANAGER = "android.arch.work"
 }

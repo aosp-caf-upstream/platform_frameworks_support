@@ -23,12 +23,6 @@ plugins {
     id("SupportAndroidLibraryPlugin")
 }
 
-android {
-    buildTypes.all {
-        consumerProguardFiles 'proguard-rules.pro'
-    }
-}
-
 dependencies {
     api(project(":lifecycle:lifecycle-runtime"))
     api(project(":arch:core-common"))
@@ -36,6 +30,8 @@ dependencies {
     api(SUPPORT_FRAGMENTS, libs.support_exclude_config)
     api(project(":lifecycle:lifecycle-common"))
     api(project(":lifecycle:lifecycle-livedata"))
+    api(project(":lifecycle:lifecycle-process"))
+    api(project(":lifecycle:lifecycle-service"))
     api(project(":lifecycle:lifecycle-viewmodel"))
 
     testImplementation(project(":arch:core-testing"))
@@ -55,4 +51,5 @@ supportLibrary {
     inceptionYear = "2017"
     description = "Android Lifecycle Extensions"
     url = SupportLibraryExtension.ARCHITECTURE_URL
+    failOnDeprecationWarnings = false
 }

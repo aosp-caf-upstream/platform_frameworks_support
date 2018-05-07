@@ -17,6 +17,7 @@
 package androidx.room.processor
 
 import COMMON
+import androidx.room.Embedded
 import androidx.room.parser.SQLTypeAffinity
 import androidx.room.processor.ProcessorErrors.CANNOT_FIND_GETTER_FOR_FIELD
 import androidx.room.processor.ProcessorErrors.CANNOT_FIND_TYPE
@@ -242,6 +243,41 @@ class PojoProcessorTest {
             assertThat(pojo.fields.size, `is`(5))
             assertThat(pojo.fields.map { it.columnName }, `is`(
                     listOf("id", "foox", "fooy2", "foobarlat", "foobarlng")))
+        }.compilesWithoutError()
+    }
+
+    @Test
+    fun embedded_generic() {
+        val point = """
+            package foo.bar;
+            public class Point {
+                public int x;
+                public int y;
+            }
+            """.toJFO("foo.bar.Point")
+        val base = """
+            package foo.bar;
+            import ${Embedded::class.java.canonicalName};
+            public class BaseClass<T> {
+                @Embedded
+                public T genericField;
+            }
+            """.toJFO("foo.bar.BaseClass")
+        singleRunFullClass(
+            """
+                package foo.bar;
+                public class MyPojo extends BaseClass<Point> {
+                    public int normalField;
+                }
+                """,
+            point, base
+        ) { pojo, _ ->
+            assertThat(pojo.fields.size, `is`(3))
+            assertThat(pojo.fields.map { it.columnName }.toSet(), `is`(
+                setOf("x", "y", "normalField")))
+            val pointField = pojo.embeddedFields.first { it.field.name == "genericField" }
+            assertThat(pointField.pojo.typeName,
+                `is`(ClassName.get("foo.bar", "Point") as TypeName))
         }.compilesWithoutError()
     }
 
@@ -514,6 +550,21 @@ class PojoProcessorTest {
             assertThat(rel.projection, `is`(listOf("name")))
             assertThat(rel.entity.typeName, `is`(COMMON.USER_TYPE_NAME as TypeName))
         }.compilesWithoutError()
+    }
+
+    @Test
+    fun relation_extendsBounds() {
+        singleRun(
+            """
+                int id;
+                @Relation(parentColumn = "id", entityColumn = "uid")
+                public List<? extends User> user;
+                """, COMMON.USER
+        ) { pojo ->
+            assertThat(pojo.relations.size, `is`(1))
+            assertThat(pojo.relations.first().entityField.name, `is`("uid"))
+            assertThat(pojo.relations.first().parentField.name, `is`("id"))
+        }.compilesWithoutError().withWarningCount(0)
     }
 
     @Test
@@ -929,29 +980,40 @@ class PojoProcessorTest {
                         "foo.bar.MyPojo -> foo.bar.MyPojo.A -> foo.bar.MyPojo"))
     }
 
-    fun singleRun(
+    private fun singleRun(
             code: String, vararg jfos: JavaFileObject, handler: (Pojo) -> Unit): CompileTester {
         return singleRun(code, *jfos) { pojo, _ ->
             handler(pojo)
         }
     }
 
-    fun singleRun(
+    private fun singleRun(
             code: String, vararg jfos: JavaFileObject,
             handler: (Pojo, TestInvocation) -> Unit): CompileTester {
-        val pojoJFO = """
+        val pojoCode = """
                 $HEADER
                 $code
                 $FOOTER
-                """.toJFO(MY_POJO.toString())
+                """
+        return singleRunFullClass(
+            code = pojoCode,
+            jfos = *jfos,
+            handler = handler
+        )
+    }
+
+    private fun singleRunFullClass(
+        code: String, vararg jfos: JavaFileObject,
+        handler: (Pojo, TestInvocation) -> Unit): CompileTester {
+        val pojoJFO = code.toJFO(MY_POJO.toString())
         val all = (jfos.toList() + pojoJFO).toTypedArray()
         return simpleRun(*all) { invocation ->
             handler.invoke(
-                    PojoProcessor(baseContext = invocation.context,
-                            element = invocation.typeElement(MY_POJO.toString()),
-                            bindingScope = FieldProcessor.BindingScope.READ_FROM_CURSOR,
-                            parent = null).process(),
-                    invocation
+                PojoProcessor(baseContext = invocation.context,
+                    element = invocation.typeElement(MY_POJO.toString()),
+                    bindingScope = FieldProcessor.BindingScope.READ_FROM_CURSOR,
+                    parent = null).process(),
+                invocation
             )
         }
     }
