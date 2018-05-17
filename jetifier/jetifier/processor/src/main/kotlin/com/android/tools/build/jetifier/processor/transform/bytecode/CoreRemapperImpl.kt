@@ -51,28 +51,21 @@ class CoreRemapperImpl(
             return result
         }
 
-        if (!context.useFallbackIfTypeIsMissing) {
-            context.reportNoMappingFoundFailure()
-        }
+        context.reportNoMappingFoundFailure(TAG, type)
         return type
     }
 
     override fun rewriteString(value: String): String {
-        val startsWithAndroidX = context.isInReversedMode && value.startsWith("androidx")
-
         val type = JavaType.fromDotVersion(value)
-        if (!context.typeRewriter.isEligibleForRewrite(type)) {
-            if (startsWithAndroidX) {
-                Log.i(TAG, "Found & ignored string '%s'", value)
-            }
+        if (!context.config.isEligibleForRewrite(type)) {
             return value
         }
 
-        val result = context.config.typesMap.mapType(type)
-        if (result != null) {
-            changesDone = changesDone || result != type
-            Log.i(TAG, "Map string: '%s' -> '%s'", type, result)
-            return result.toDotNotation()
+        val mappedType = context.config.typesMap.mapType(type)
+        if (mappedType != null) {
+            changesDone = changesDone || mappedType != type
+            Log.i(TAG, "Map string: '%s' -> '%s'", type, mappedType)
+            return mappedType.toDotNotation()
         }
 
         // We might be working with an internal type or field reference, e.g.
@@ -88,10 +81,10 @@ class CoreRemapperImpl(
 
         // Try rewrite rules
         if (context.useFallbackIfTypeIsMissing) {
-            val result = context.config.rulesMap.rewriteType(type)
-            if (result != null) {
-                Log.i(TAG, "Map string: '%s' -> '%s' via fallback", value, result)
-                return result.toDotNotation()
+            val rewrittenType = context.config.rulesMap.rewriteType(type)
+            if (rewrittenType != null) {
+                Log.i(TAG, "Map string: '%s' -> '%s' via fallback", value, rewrittenType)
+                return rewrittenType.toDotNotation()
             }
         }
 
@@ -101,20 +94,18 @@ class CoreRemapperImpl(
     }
 
     fun rewritePath(path: Path): Path {
-        if (!context.rewritingSupportLib) {
+        val owner = path.toFile().path.replace('\\', '/').removeSuffix(".class")
+        val type = JavaType(owner)
+
+        val result = context.typeRewriter.rewriteType(type)
+        if (result == null) {
+            context.reportNoMappingFoundFailure("PathRewrite", type)
             return path
         }
 
-        val owner = path.toFile().path.replace('\\', '/').removeSuffix(".class")
-        val type = JavaType(owner)
-        val result = rewriteType(type)
         if (result != type) {
             changesDone = true
             return path.fileSystem.getPath(result.fullName + ".class")
-        }
-
-        if (!context.useFallbackIfTypeIsMissing) {
-            context.reportNoMappingFoundFailure()
         }
 
         return path

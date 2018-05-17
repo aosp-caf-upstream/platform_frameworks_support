@@ -101,7 +101,7 @@ class Processor private constructor(
                     slRules = config.slRules,
                     pomRewriteRules = config.pomRewriteRules.map { it.getReversed() }.toSet(),
                     typesMap = config.typesMap.reverseMapOrDie(),
-                    proGuardMap = config.proGuardMap.reverseMapOrDie(),
+                    proGuardMap = config.proGuardMap.reverseMap(),
                     packageMap = config.packageMap.reverse()
                 )
             }
@@ -153,6 +153,14 @@ class Processor private constructor(
         libraries.forEach { transformLibrary(it) }
 
         if (context.errorsTotal() > 0) {
+            if (context.isInReversedMode && context.rewritingSupportLib) {
+                throw IllegalArgumentException("There were ${context.errorsTotal()} errors found " +
+                    "during the de-jetification. You have probably added new androidx types " +
+                    "into support library and dejetifier doesn't know where to move them. " +
+                    "Please update default.config and regenerate default.generated.config via" +
+                    "jetifier/jetifier/preprocessor/scripts/processDefaultConfig.sh")
+            }
+
             throw IllegalArgumentException("There were ${context.errorsTotal()}" +
                 " errors found during the remapping. Check the logs for more details.")
         }
@@ -249,7 +257,6 @@ class Processor private constructor(
         Log.i(TAG, "Started new transformation")
         Log.i(TAG, "- Input file: %s", archive.relativePath)
 
-        context.libraryName = archive.fileName
         archive.accept(this)
     }
 
@@ -261,11 +268,11 @@ class Processor private constructor(
         val transformer = transformers.firstOrNull { it.canTransform(archiveFile) }
 
         if (transformer == null) {
-            Log.d(TAG, "[Skipped] %s", archiveFile.relativePath)
+            Log.v(TAG, "[Skipped] %s", archiveFile.relativePath)
             return
         }
 
-        Log.d(TAG, "[Applied: %s] %s", transformer.javaClass.simpleName, archiveFile.relativePath)
+        Log.v(TAG, "[Applied: %s] %s", transformer.javaClass.simpleName, archiveFile.relativePath)
         transformer.runTransform(archiveFile)
     }
 }
