@@ -139,7 +139,12 @@ public class WorkerWrapper implements Runnable {
                 return;
             }
 
-            Worker.WorkerResult result = mWorker.doWork();
+            Worker.WorkerResult result;
+            try {
+                result = mWorker.doWork();
+            } catch (Exception | Error e) {
+                result = Worker.WorkerResult.FAILURE;
+            }
 
             try {
                 mWorkDatabase.beginTransaction();
@@ -147,7 +152,11 @@ public class WorkerWrapper implements Runnable {
                     State state = mWorkSpecDao.getState(mWorkSpecId);
                     if (state == RUNNING) {
                         handleResult(result);
-                    } else if (!state.isFinished()) {
+                    } else if (state == null || !state.isFinished()) {
+                        // state can be null here with a REPLACE on beginUniqueWork().
+                        // Treat it as a failure, and rescheduleAndNotify() will
+                        // turn into a no-op. We still need to notify potential observers
+                        // holding on to wake locks on our behalf.
                         rescheduleAndNotify();
                     }
                     mWorkDatabase.setTransactionSuccessful();

@@ -14,12 +14,17 @@
  * limitations under the License.
  */
 
-package androidx.work.ktx.workers
+package androidx.work.worker;
 
-import androidx.work.Worker
+import android.support.annotation.NonNull;
 
-class TestWorker : Worker() {
-    override fun doWork(): WorkerResult {
-        return WorkerResult.SUCCESS
+import androidx.work.Worker;
+
+public class ExceptionWorker extends Worker {
+
+    @NonNull
+    @Override
+    public WorkerResult doWork() {
+        throw new IllegalStateException();
     }
 }

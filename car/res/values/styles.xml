@@ -256,7 +256,6 @@ limitations under the License.
         <item name="android:paddingEnd">@dimen/car_borderless_button_horizontal_padding</item>
         <item name="android:textSize">@dimen/car_action1_size</item>
         <item name="android:textColor">@drawable/car_borderless_button_text_color</item>
-        <item name="android:background">@drawable/car_borderless_button_background</item>
     </style>
 
     <style name="Widget.Car.Button.Borderless.Colored.Light">
@@ -376,6 +375,7 @@ limitations under the License.
         <item name="android:maxLines">1</item>
         <item name="android:textAppearance">@style/TextAppearance.Car.Title2</item>
         <item name="android:ellipsize">end</item>
+        <item name="android:textAlignment">viewStart</item>
     </style>
 
     <!-- Title text for a dialog that is fixed in a light color. -->
