@@ -23,7 +23,6 @@ import android.os.Bundle;
 import android.support.annotation.IdRes;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
-import android.support.annotation.RestrictTo;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentTransaction;
@@ -35,6 +34,7 @@ import androidx.navigation.NavOptions;
 import androidx.navigation.Navigator;
 import androidx.navigation.NavigatorProvider;
 
+import java.util.ArrayDeque;
 import java.util.HashMap;
 
 /**
@@ -44,32 +44,28 @@ import java.util.HashMap;
  */
 @Navigator.Name("fragment")
 public class FragmentNavigator extends Navigator<FragmentNavigator.Destination> {
+    private static final String KEY_BACK_STACK_IDS = "androidx-nav-fragment:navigator:backStackIds";
+
     private Context mContext;
     private FragmentManager mFragmentManager;
     private int mContainerId;
-    private int mBackStackCount;
+    private ArrayDeque<Integer> mBackStack = new ArrayDeque<>();
 
     private final FragmentManager.OnBackStackChangedListener mOnBackStackChangedListener =
             new FragmentManager.OnBackStackChangedListener() {
                 @Override
                 public void onBackStackChanged() {
-                    int newCount = mFragmentManager.getBackStackEntryCount();
-                    int backStackEffect;
-                    if (newCount < mBackStackCount) {
-                        backStackEffect = BACK_STACK_DESTINATION_POPPED;
-                    } else if (newCount > mBackStackCount) {
-                        backStackEffect = BACK_STACK_DESTINATION_ADDED;
-                    } else {
-                        backStackEffect = BACK_STACK_UNCHANGED;
+                    // The initial Fragment won't be on the back stack, so the
+                    // real count of destinations is the back stack entry count + 1
+                    int newCount = mFragmentManager.getBackStackEntryCount() + 1;
+                    if (newCount < mBackStack.size()) {
+                        // Handle cases where the user hit the system back button
+                        while (mBackStack.size() > newCount) {
+                            mBackStack.removeLast();
+                        }
+                        int destId = mBackStack.isEmpty() ? 0 : mBackStack.peekLast();
+                        dispatchOnNavigatorNavigated(destId, BACK_STACK_DESTINATION_POPPED);
                     }
-                    mBackStackCount = newCount;
-
-                    int destId = 0;
-                    StateFragment state = getState();
-                    if (state != null) {
-                        destId = state.mCurrentDestId;
-                    }
-                    dispatchOnNavigatorNavigated(destId, backStackEffect);
                 }
             };
 
@@ -79,13 +75,19 @@ public class FragmentNavigator extends Navigator<FragmentNavigator.Destination> 
         mFragmentManager = manager;
         mContainerId = containerId;
 
-        mBackStackCount = mFragmentManager.getBackStackEntryCount();
         mFragmentManager.addOnBackStackChangedListener(mOnBackStackChangedListener);
     }
 
     @Override
     public boolean popBackStack() {
-        return mFragmentManager.popBackStackImmediate();
+        if (mFragmentManager.getBackStackEntryCount() == 0) {
+            return false;
+        }
+        mFragmentManager.popBackStack();
+        mBackStack.removeLast();
+        int destId = mBackStack.isEmpty() ? 0 : mBackStack.peekLast();
+        dispatchOnNavigatorNavigated(destId, BACK_STACK_DESTINATION_POPPED);
+        return true;
     }
 
     @NonNull
@@ -126,40 +128,64 @@ public class FragmentNavigator extends Navigator<FragmentNavigator.Destination> 
 
         ft.replace(mContainerId, frag);
 
-        final StateFragment oldState = getState();
-        if (oldState != null) {
-            ft.remove(oldState);
-        }
-
         final @IdRes int destId = destination.getId();
-        final StateFragment newState = new StateFragment();
-        newState.mCurrentDestId = destId;
-        ft.add(newState, StateFragment.FRAGMENT_TAG);
-
-        final boolean initialNavigation = mFragmentManager.getFragments().isEmpty();
+        final boolean initialNavigation = mBackStack.isEmpty();
         final boolean isClearTask = navOptions != null && navOptions.shouldClearTask();
         // TODO Build first class singleTop behavior for fragments
-        final boolean isSingleTopReplacement = navOptions != null && oldState != null
+        final boolean isSingleTopReplacement = navOptions != null && !initialNavigation
                 && navOptions.shouldLaunchSingleTop()
-                && oldState.mCurrentDestId == destId;
+                && mBackStack.peekLast() == destId;
+
+        int backStackEffect;
         if (!initialNavigation && !isClearTask && !isSingleTopReplacement) {
             ft.addToBackStack(getBackStackName(destId));
+            backStackEffect = BACK_STACK_DESTINATION_ADDED;
+        } else if (isSingleTopReplacement) {
+            // Single Top means we only want one instance on the back stack
+            if (mBackStack.size() > 1) {
+                // If the Fragment to be replaced is on the FragmentManager's
+                // back stack, a simple replace() isn't enough so we
+                // remove it from the back stack and put our replacement
+                // on the back stack in its place
+                mFragmentManager.popBackStack();
+                ft.addToBackStack(getBackStackName(destId));
+            }
+            backStackEffect = BACK_STACK_UNCHANGED;
         } else {
-            ft.runOnCommit(new Runnable() {
-                @Override
-                public void run() {
-                    dispatchOnNavigatorNavigated(destId, isSingleTopReplacement
-                            ? BACK_STACK_UNCHANGED
-                            : BACK_STACK_DESTINATION_ADDED);
-                }
-            });
+            backStackEffect = BACK_STACK_DESTINATION_ADDED;
         }
+        ft.setReorderingAllowed(true);
         ft.commit();
-        mFragmentManager.executePendingTransactions();
+        // The commit succeeded, update our view of the world
+        if (initialNavigation || !isSingleTopReplacement) {
+            mBackStack.add(destId);
+        }
+        dispatchOnNavigatorNavigated(destId, backStackEffect);
     }
 
-    private StateFragment getState() {
-        return (StateFragment) mFragmentManager.findFragmentByTag(StateFragment.FRAGMENT_TAG);
+    @Override
+    @Nullable
+    public Bundle onSaveState() {
+        Bundle b = new Bundle();
+        int[] backStack = new int[mBackStack.size()];
+        int index = 0;
+        for (Integer id : mBackStack) {
+            backStack[index++] = id;
+        }
+        b.putIntArray(KEY_BACK_STACK_IDS, backStack);
+        return b;
+    }
+
+    @Override
+    public void onRestoreState(@Nullable Bundle savedState) {
+        if (savedState != null) {
+            int[] backStack = savedState.getIntArray(KEY_BACK_STACK_IDS);
+            if (backStack != null) {
+                for (int destId : backStack) {
+                    mBackStack.add(destId);
+                }
+            }
+        }
     }
 
     /**
@@ -206,6 +232,7 @@ public class FragmentNavigator extends Navigator<FragmentNavigator.Destination> 
         }
 
         @SuppressWarnings("unchecked")
+        @NonNull
         private Class<? extends Fragment> getFragmentClassByName(Context context, String name) {
             if (name != null && name.charAt(0) == '.') {
                 name = context.getPackageName() + name;
@@ -229,7 +256,8 @@ public class FragmentNavigator extends Navigator<FragmentNavigator.Destination> 
          *              destination
          * @return this {@link Destination}
          */
-        public Destination setFragmentClass(Class<? extends Fragment> clazz) {
+        @NonNull
+        public Destination setFragmentClass(@NonNull Class<? extends Fragment> clazz) {
             mFragmentClass = clazz;
             return this;
         }
@@ -249,6 +277,7 @@ public class FragmentNavigator extends Navigator<FragmentNavigator.Destination> 
          * with this destination
          */
         @SuppressWarnings("ClassNewInstance")
+        @NonNull
         public Fragment createFragment(@Nullable Bundle args) {
             Class<? extends Fragment> clazz = getFragmentClass();
             if (clazz == null) {
@@ -266,34 +295,6 @@ public class FragmentNavigator extends Navigator<FragmentNavigator.Destination> 
                 f.setArguments(args);
             }
             return f;
-        }
-    }
-
-    /**
-     * An internal fragment used by FragmentNavigator to track additional navigation state.
-     *
-     * @hide
-     */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static class StateFragment extends Fragment {
-        static final String FRAGMENT_TAG = "android-support-nav:FragmentNavigator.StateFragment";
-
-        private static final String KEY_CURRENT_DEST_ID = "currentDestId";
-
-        int mCurrentDestId;
-
-        @Override
-        public void onCreate(@Nullable Bundle savedInstanceState) {
-            super.onCreate(savedInstanceState);
-            if (savedInstanceState != null) {
-                mCurrentDestId = savedInstanceState.getInt(KEY_CURRENT_DEST_ID);
-            }
-        }
-
-        @Override
-        public void onSaveInstanceState(Bundle outState) {
-            super.onSaveInstanceState(outState);
-            outState.putInt(KEY_CURRENT_DEST_ID, mCurrentDestId);
         }
     }
 }
