@@ -30,11 +30,13 @@ import android.support.test.InstrumentationRegistry;
 import android.support.test.filters.MediumTest;
 import android.support.test.rule.ActivityTestRule;
 import android.support.test.runner.AndroidJUnit4;
-import androidx.recyclerview.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+
+import androidx.car.test.R;
+import androidx.recyclerview.widget.RecyclerView;
 
 import org.junit.Assume;
 import org.junit.Before;
@@ -45,8 +47,6 @@ import org.junit.runner.RunWith;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-
-import androidx.car.test.R;
 
 /** Unit tests for implementations of {@link PagedListView.DividerVisibilityManager}. */
 @RunWith(AndroidJUnit4.class)

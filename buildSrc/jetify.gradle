@@ -45,7 +45,7 @@ task stripArchive(type: Zip) {
             "m2repository/androidx/legacy/**",
             "m2repository/androidx/loader/**",
             "m2repository/androidx/localbroadcastmanager/**",
-            "m2repository/androidx/media/**",
+            "m2repository/androidx/media/media/**",
             "m2repository/androidx/mediarouter/**",
             "m2repository/androidx/palette/palette/**",
             "m2repository/androidx/percentlayout/**",
@@ -75,5 +75,13 @@ task dejetifyArchive(type: Exec) {
 
     outputs.file "${rootProject.ext.distDir}/top-of-tree-m2repository-dejetified-${project.ext.buildNumber}.zip"
 
-    commandLine ("${jetifierBin}", "-s", "-r", "-outputfile", "${outputs.files.singleFile}",  "-i", "${inputs.files.singleFile}", "-l", "error", "-rebuildTopOfTree")
+    commandLine (
+        "${jetifierBin}",
+        "-i", "${inputs.files.singleFile}",
+        "-o", "${outputs.files.singleFile}",
+        "--versions", "inDev",
+        "--log", "warning",
+        "--reversed",
+        "--rebuildTopOfTree"
+    )
 }

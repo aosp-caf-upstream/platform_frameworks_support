@@ -51,6 +51,7 @@ public class SystemAlarmDispatcher implements ExecutionListener {
     private static final String TAG = "SystemAlarmDispatcher";
     private static final String PROCESS_COMMAND_TAG = "ProcessCommand";
     private static final String KEY_START_ID = "KEY_START_ID";
+    private static final int DEFAULT_START_ID = 0;
 
     private final Context mContext;
     private final WorkTimer mWorkTimer;
@@ -98,9 +99,20 @@ public class SystemAlarmDispatcher implements ExecutionListener {
             @NonNull String workSpecId,
             boolean isSuccessful,
             boolean needsReschedule) {
-        mCommandHandler.onExecuted(workSpecId, isSuccessful, needsReschedule);
-        // check if we need to stop service
-        postOnMainThread(new CheckForCompletionRunnable(this));
+
+        // When there are lots of workers completing at around the same time,
+        // this creates lock contention for the DelayMetCommandHandlers inside the CommandHandler.
+        // So move the actual execution of the post completion callbacks on the command executor
+        // thread.
+        postOnMainThread(
+                new AddRunnable(
+                        this,
+                        CommandHandler.createExecutionCompletedIntent(
+                                mContext,
+                                workSpecId,
+                                isSuccessful,
+                                needsReschedule),
+                        DEFAULT_START_ID));
     }
 
     /**
@@ -128,7 +140,9 @@ public class SystemAlarmDispatcher implements ExecutionListener {
         }
 
         intent.putExtra(KEY_START_ID, startId);
-        mIntents.add(intent);
+        synchronized (mIntents) {
+            mIntents.add(intent);
+        }
         processCommand();
         return true;
     }
@@ -162,10 +176,12 @@ public class SystemAlarmDispatcher implements ExecutionListener {
         assertMainThread();
         // if there are no more intents to process, and the command handler
         // has no more pending commands, stop the service.
-        if (!mCommandHandler.hasPendingCommands() && mIntents.isEmpty()) {
-            Log.d(TAG, "No more commands & intents.");
-            if (mCompletedListener != null) {
-                mCompletedListener.onAllCommandsCompleted();
+        synchronized (mIntents) {
+            if (!mCommandHandler.hasPendingCommands() && mIntents.isEmpty()) {
+                Log.d(TAG, "No more commands & intents.");
+                if (mCompletedListener != null) {
+                    mCompletedListener.onAllCommandsCompleted();
+                }
             }
         }
     }
@@ -183,10 +199,14 @@ public class SystemAlarmDispatcher implements ExecutionListener {
             mCommandExecutorService.submit(new Runnable() {
                 @Override
                 public void run() {
-                    final Intent intent = mIntents.get(0);
+                    final Intent intent;
+                    synchronized (mIntents) {
+                        intent = mIntents.get(0);
+                    }
+
                     if (intent != null) {
                         final String action = intent.getAction();
-                        final int startId = intent.getIntExtra(KEY_START_ID, 0);
+                        final int startId = intent.getIntExtra(KEY_START_ID, DEFAULT_START_ID);
                         Log.d(TAG, String.format("Processing command %s, %s", intent, startId));
                         final PowerManager.WakeLock wakeLock = WakeLocks.newWakeLock(
                                 mContext,
@@ -243,12 +263,14 @@ public class SystemAlarmDispatcher implements ExecutionListener {
     @MainThread
     private boolean hasIntentWithAction(@NonNull String action) {
         assertMainThread();
-        for (Intent intent : mIntents) {
-            if (action.equals(intent.getAction())) {
-                return true;
+        synchronized (mIntents) {
+            for (Intent intent : mIntents) {
+                if (action.equals(intent.getAction())) {
+                    return true;
+                }
             }
+            return false;
         }
-        return false;
     }
 
     private void assertMainThread() {

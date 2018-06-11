@@ -440,19 +440,20 @@ public class NavController {
         }
         Bundle extras = intent.getExtras();
         int[] deepLink = extras != null ? extras.getIntArray(KEY_DEEP_LINK_IDS) : null;
-        Bundle bundle = extras != null ? extras.getBundle(KEY_DEEP_LINK_EXTRAS) : null;
+        Bundle bundle = new Bundle();
+        Bundle deepLinkExtras = extras != null ? extras.getBundle(KEY_DEEP_LINK_EXTRAS) : null;
+        if (deepLinkExtras != null) {
+            bundle.putAll(deepLinkExtras);
+        }
         if ((deepLink == null || deepLink.length == 0) && intent.getData() != null) {
             Pair<NavDestination, Bundle> matchingDeepLink = mGraph.matchDeepLink(intent.getData());
             if (matchingDeepLink != null) {
                 deepLink = matchingDeepLink.first.buildDeepLinkIds();
-                bundle = matchingDeepLink.second;
+                bundle.putAll(matchingDeepLink.second);
             }
         }
         if (deepLink == null || deepLink.length == 0) {
             return false;
-        }
-        if (bundle == null) {
-            bundle = new Bundle();
         }
         bundle.putParcelable(KEY_DEEP_LINK_INTENT, intent);
         int flags = intent.getFlags();
@@ -475,10 +476,12 @@ public class NavController {
             // Start with a cleared task starting at our root when we're on our own task
             if (!mBackStack.isEmpty()) {
                 navigate(mGraph.getStartDestination(), bundle, new NavOptions.Builder()
-                        .setClearTask(true).setEnterAnim(0).setExitAnim(0).build());
+                        .setPopUpTo(mGraph.getId(), true)
+                        .setEnterAnim(0).setExitAnim(0).build());
             }
-            while (mBackStack.size() < deepLink.length) {
-                int destinationId = deepLink[mBackStack.size()];
+            int index = 0;
+            while (index < deepLink.length) {
+                int destinationId = deepLink[index++];
                 NavDestination node = findDestination(destinationId);
                 if (node == null) {
                     throw new IllegalStateException("unknown destination during deep link: "
@@ -504,7 +507,8 @@ public class NavController {
             } else {
                 // Navigate to the last NavDestination, clearing any existing destinations
                 node.navigate(bundle, new NavOptions.Builder()
-                        .setClearTask(true).setEnterAnim(0).setExitAnim(0).build());
+                        .setPopUpTo(mGraph.getId(), true)
+                        .setEnterAnim(0).setExitAnim(0).build());
             }
         }
         return true;
@@ -574,6 +578,7 @@ public class NavController {
      * @param args arguments to pass to the destination
      * @param navOptions special options for this navigation operation
      */
+    @SuppressWarnings("deprecation")
     public void navigate(@IdRes int resId, @Nullable Bundle args, @Nullable NavOptions navOptions) {
         NavDestination currentNode = mBackStack.isEmpty() ? mGraph : mBackStack.peekLast();
         if (currentNode == null) {
@@ -609,8 +614,7 @@ public class NavController {
         if (navOptions != null) {
             if (navOptions.shouldClearTask()) {
                 // Start with a clean slate
-                popBackStack(0, true);
-                mBackStack.clear();
+                popBackStack(mGraph.getId(), true);
             } else if (navOptions.getPopUpTo() != 0) {
                 popBackStack(navOptions.getPopUpTo(), navOptions.isPopUpToInclusive());
             }

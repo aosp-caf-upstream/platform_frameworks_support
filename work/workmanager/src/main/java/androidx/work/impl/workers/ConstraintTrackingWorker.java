@@ -75,8 +75,7 @@ public class ConstraintTrackingWorker extends Worker implements WorkConstraintsC
                 getApplicationContext(),
                 className,
                 getId(),
-                getInputData(),
-                getRuntimeExtras());
+                getExtras());
 
         if (mDelegate == null) {
             Log.d(TAG, "No worker to delegate to.");
@@ -86,7 +85,7 @@ public class ConstraintTrackingWorker extends Worker implements WorkConstraintsC
         WorkDatabase workDatabase = getWorkDatabase();
 
         // We need to know what the real constraints are for the delegate.
-        WorkSpec workSpec = workDatabase.workSpecDao().getWorkSpec(getId());
+        WorkSpec workSpec = workDatabase.workSpecDao().getWorkSpec(getId().toString());
         if (workSpec == null) {
             return WorkerResult.FAILURE;
         }
@@ -96,7 +95,7 @@ public class ConstraintTrackingWorker extends Worker implements WorkConstraintsC
         // Start tracking
         workConstraintsTracker.replace(Collections.singletonList(workSpec));
 
-        if (workConstraintsTracker.areAllConstraintsMet(getId())) {
+        if (workConstraintsTracker.areAllConstraintsMet(getId().toString())) {
             Log.d(TAG, String.format("Constraints met for delegate %s", className));
 
             // Wrapping the call to mDelegate#doWork() in a try catch, because

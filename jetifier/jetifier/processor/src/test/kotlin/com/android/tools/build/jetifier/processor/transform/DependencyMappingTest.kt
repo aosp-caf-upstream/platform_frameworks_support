@@ -16,13 +16,9 @@
 
 package com.android.tools.build.jetifier.processor.transform
 
-import com.android.tools.build.jetifier.core.PackageMap
 import com.android.tools.build.jetifier.core.config.Config
 import com.android.tools.build.jetifier.core.pom.PomDependency
 import com.android.tools.build.jetifier.core.pom.PomRewriteRule
-import com.android.tools.build.jetifier.core.proguard.ProGuardTypesMap
-import com.android.tools.build.jetifier.core.rule.RewriteRulesMap
-import com.android.tools.build.jetifier.core.type.TypesMap
 import com.android.tools.build.jetifier.processor.Processor
 import com.google.common.truth.Truth
 import org.junit.Test
@@ -36,33 +32,7 @@ class DependencyMappingTest {
             rules = setOf(
                 PomRewriteRule(
                     from = PomDependency(groupId = "hello", artifactId = "world"),
-                    to = setOf(
-                        PomDependency(groupId = "hi", artifactId = "all", version = "2.0.0")
-                    )
-                ))
-        )
-    }
-
-    @Test fun mapTest_oneToNone_shouldMapToEmpty() {
-        MappingTester.testRewrite(
-            from = "hello:world:1.0.0",
-            to = null,
-            rules = setOf(
-                PomRewriteRule(
-                    from = PomDependency(groupId = "hello", artifactId = "world"),
-                    to = setOf()
-                ))
-        )
-    }
-
-    @Test fun mapTest_oneToNull_ruleNotFound_returnNull() {
-        MappingTester.testRewrite(
-            from = "hello:world:1.0.0",
-            to = null,
-            rules = setOf(
-                PomRewriteRule(
-                    from = PomDependency(groupId = "hello", artifactId = "me", version = "1.0"),
-                    to = setOf()
+                    to = PomDependency(groupId = "hi", artifactId = "all", version = "2.0.0")
                 ))
         )
     }
@@ -70,14 +40,8 @@ class DependencyMappingTest {
     object MappingTester {
 
         fun testRewrite(from: String, to: String?, rules: Set<PomRewriteRule>) {
-            val config = Config(
-                restrictToPackagePrefixes = emptySet(),
-                rulesMap = RewriteRulesMap.EMPTY,
-                slRules = emptyList(),
-                pomRewriteRules = rules,
-                typesMap = TypesMap.EMPTY,
-                proGuardMap = ProGuardTypesMap.EMPTY,
-                packageMap = PackageMap.EMPTY
+            val config = Config.fromOptional(
+                pomRewriteRules = rules
             )
 
             val processor = Processor.createProcessor(config)

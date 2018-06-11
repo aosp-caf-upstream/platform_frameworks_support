@@ -76,10 +76,10 @@ public class Processor implements ExecutionListener {
      * Starts a given unit of work in the background.
      *
      * @param id The work id to execute.
-     * @param runtimeExtras The {@link RuntimeExtras} for this work, if any.
+     * @param runtimeExtras The {@link Extras.RuntimeExtras} for this work, if any.
      * @return {@code true} if the work was successfully enqueued for processing
      */
-    public synchronized boolean startWork(String id, RuntimeExtras runtimeExtras) {
+    public synchronized boolean startWork(String id, Extras.RuntimeExtras runtimeExtras) {
         // Work may get triggered multiple times if they have passing constraints and new work with
         // those constraints are added.
         if (mEnqueuedWorkMap.containsKey(id)) {
@@ -99,17 +99,17 @@ public class Processor implements ExecutionListener {
     }
 
     /**
-     * Tries to stop a unit of work.
+     * Stops a unit of work.
      *
      * @param id The work id to stop
      * @return {@code true} if the work was stopped successfully
      */
     public synchronized boolean stopWork(String id) {
-        Log.d(TAG, String.format("Processor cancelling %s", id));
+        Log.d(TAG, String.format("Processor stopping %s", id));
         WorkerWrapper wrapper = mEnqueuedWorkMap.remove(id);
         if (wrapper != null) {
-            wrapper.interrupt();
-            Log.d(TAG, String.format("WorkerWrapper interrupted for %s", id));
+            wrapper.interrupt(false);
+            Log.d(TAG, String.format("WorkerWrapper stopped for %s", id));
             return true;
         }
         Log.d(TAG, String.format("WorkerWrapper could not be found for %s", id));
@@ -117,13 +117,22 @@ public class Processor implements ExecutionListener {
     }
 
     /**
-     * Sets the given {@code id} as cancelled.  This does not actually stop any processing; call
-     * {@link #stopWork(String)} to do that.
+     * Stops a unit of work and marks it as cancelled.
      *
-     * @param id  The work id to mark as cancelled
+     * @param id The work id to stop and cancel
+     * @return {@code true} if the work was stopped successfully
      */
-    public synchronized void setCancelled(String id) {
+    public synchronized boolean stopAndCancelWork(String id) {
+        Log.d(TAG, String.format("Processor cancelling %s", id));
         mCancelledIds.add(id);
+        WorkerWrapper wrapper = mEnqueuedWorkMap.remove(id);
+        if (wrapper != null) {
+            wrapper.interrupt(true);
+            Log.d(TAG, String.format("WorkerWrapper cancelled for %s", id));
+            return true;
+        }
+        Log.d(TAG, String.format("WorkerWrapper could not be found for %s", id));
+        return false;
     }
 
     /**

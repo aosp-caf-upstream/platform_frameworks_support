@@ -19,9 +19,6 @@ package com.android.tools.build.jetifier.processor.transform.pom
 import com.android.tools.build.jetifier.core.config.Config
 import com.android.tools.build.jetifier.core.pom.PomDependency
 import com.android.tools.build.jetifier.core.pom.PomRewriteRule
-import com.android.tools.build.jetifier.core.proguard.ProGuardTypesMap
-import com.android.tools.build.jetifier.core.rule.RewriteRulesMap
-import com.android.tools.build.jetifier.core.type.TypesMap
 import com.android.tools.build.jetifier.processor.FileMapping
 import com.android.tools.build.jetifier.processor.Processor
 import com.android.tools.build.jetifier.processor.archive.Archive
@@ -36,26 +33,20 @@ import java.io.File
 class PomRewriteInZipTest {
 
     companion object {
-        private val TEST_CONFIG = Config(
+        private val TEST_CONFIG = Config.fromOptional(
             restrictToPackagePrefixes = setOf("com/sample"),
-            rulesMap = RewriteRulesMap.EMPTY,
-            slRules = listOf(),
             pomRewriteRules = setOf(
                 PomRewriteRule(
                     from = PomDependency(
                         groupId = "old.group",
                         artifactId = "myOldArtifact",
                         version = "0.1.0"),
-                    to = setOf(
-                        PomDependency(
-                            groupId = "com.sample.my.group",
-                            artifactId = "myArtifact",
-                            version = "1.0.0"
-                        )
+                    to = PomDependency(
+                        groupId = "com.sample.my.group",
+                        artifactId = "myArtifact",
+                        version = "1.0.0"
                     )
-                )),
-            typesMap = TypesMap.EMPTY,
-            proGuardMap = ProGuardTypesMap.EMPTY
+            ))
         )
     }
 

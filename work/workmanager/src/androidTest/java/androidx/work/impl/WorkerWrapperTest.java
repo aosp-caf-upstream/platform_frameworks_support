@@ -27,6 +27,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.arrayContaining;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.greaterThan;
@@ -36,6 +37,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import android.content.Context;
+import android.net.Uri;
 import android.support.test.InstrumentationRegistry;
 import android.support.test.filters.LargeTest;
 import android.support.test.filters.SmallTest;
@@ -56,6 +58,7 @@ import androidx.work.worker.ChainedArgumentWorker;
 import androidx.work.worker.EchoingWorker;
 import androidx.work.worker.ExceptionWorker;
 import androidx.work.worker.FailureWorker;
+import androidx.work.worker.InterruptionAwareWorker;
 import androidx.work.worker.RetryWorker;
 import androidx.work.worker.SleepTestWorker;
 import androidx.work.worker.TestWorker;
@@ -568,8 +571,7 @@ public class WorkerWrapperTest extends DatabaseTest {
         Worker worker = WorkerWrapper.workerFromWorkSpec(
                 mContext,
                 getWorkSpec(work),
-                Data.EMPTY,
-                null);
+                new Extras(Data.EMPTY, Collections.<String>emptyList(), null));
 
         assertThat(worker, is(notNullValue()));
         assertThat(worker.getApplicationContext(), is(equalTo(mContext.getApplicationContext())));
@@ -587,8 +589,7 @@ public class WorkerWrapperTest extends DatabaseTest {
         Worker worker = WorkerWrapper.workerFromWorkSpec(
                 mContext,
                 getWorkSpec(work),
-                input,
-                null);
+                new Extras(input, Collections.<String>emptyList(), null));
 
         assertThat(worker, is(notNullValue()));
         assertThat(worker.getInputData().getString(key, null), is(expectedValue));
@@ -597,11 +598,49 @@ public class WorkerWrapperTest extends DatabaseTest {
         worker = WorkerWrapper.workerFromWorkSpec(
                 mContext,
                 getWorkSpec(work),
-                Data.EMPTY,
-                null);
+                new Extras(Data.EMPTY, Collections.<String>emptyList(), null));
 
         assertThat(worker, is(notNullValue()));
         assertThat(worker.getInputData().size(), is(0));
+    }
+
+    @Test
+    @SmallTest
+    public void testFromWorkSpec_hasCorrectTags() {
+        OneTimeWorkRequest work =
+                new OneTimeWorkRequest.Builder(TestWorker.class)
+                        .addTag("one")
+                        .addTag("two")
+                        .addTag("three")
+                        .build();
+        Worker worker = WorkerWrapper.workerFromWorkSpec(
+                mContext,
+                getWorkSpec(work),
+                new Extras(Data.EMPTY, Arrays.asList("one", "two", "three"), null));
+
+        assertThat(worker, is(notNullValue()));
+        assertThat(worker.getTags(), containsInAnyOrder("one", "two", "three"));
+    }
+
+    @Test
+    @SmallTest
+    public void testFromWorkSpec_hasCorrectRuntimeExtras() {
+        OneTimeWorkRequest work =
+                new OneTimeWorkRequest.Builder(TestWorker.class).build();
+        Extras.RuntimeExtras runtimeExtras = new Extras.RuntimeExtras();
+        runtimeExtras.triggeredContentAuthorities = new String[] { "tca1", "tca2", "tca3" };
+        runtimeExtras.triggeredContentUris = new Uri[] { Uri.parse("tcu1"), Uri.parse("tcu2") };
+
+        Worker worker = WorkerWrapper.workerFromWorkSpec(
+                mContext,
+                getWorkSpec(work),
+                new Extras(Data.EMPTY, Collections.<String>emptyList(), runtimeExtras));
+
+        assertThat(worker, is(notNullValue()));
+        assertThat(worker.getTriggeredContentAuthorities(),
+                arrayContaining(runtimeExtras.triggeredContentAuthorities));
+        assertThat(worker.getTriggeredContentUris(),
+                arrayContaining(runtimeExtras.triggeredContentUris));
     }
 
     @Test
@@ -656,9 +695,63 @@ public class WorkerWrapperTest extends DatabaseTest {
                         .withListener(mMockListener)
                         .build();
         Executors.newSingleThreadExecutor().submit(workerWrapper);
-        workerWrapper.interrupt();
+        workerWrapper.interrupt(false);
         Thread.sleep(6000L);
         verify(mMockListener).onExecuted(work.getStringId(), false, true);
+    }
+
+    @Test
+    @SmallTest
+    public void testInterruptionWithoutCancellation_isMarkedOnRunningWorker() {
+        OneTimeWorkRequest work =
+                new OneTimeWorkRequest.Builder(InterruptionAwareWorker.class).build();
+        insertWork(work);
+
+        Worker worker = WorkerWrapper.workerFromClassName(
+                mContext,
+                InterruptionAwareWorker.class.getName(),
+                work.getId(),
+                new Extras(Data.EMPTY, Collections.<String>emptyList(), null));
+        assertThat(worker, is(notNullValue()));
+        assertThat(worker.isStopped(), is(false));
+
+        WorkerWrapper workerWrapper =
+                new WorkerWrapper.Builder(mContext, mDatabase, work.getStringId())
+                        .withSchedulers(Collections.singletonList(mMockScheduler))
+                        .withListener(mMockListener)
+                        .withWorker(worker)
+                        .build();
+        Executors.newSingleThreadExecutor().submit(workerWrapper);
+        workerWrapper.interrupt(false);
+        assertThat(worker.isStopped(), is(true));
+        assertThat(worker.isCancelled(), is(false));
+    }
+
+    @Test
+    @SmallTest
+    public void testInterruptionWithCancellation_isMarkedOnRunningWorker() {
+        OneTimeWorkRequest work =
+                new OneTimeWorkRequest.Builder(InterruptionAwareWorker.class).build();
+        insertWork(work);
+
+        Worker worker = WorkerWrapper.workerFromClassName(
+                mContext,
+                InterruptionAwareWorker.class.getName(),
+                work.getId(),
+                new Extras(Data.EMPTY, Collections.<String>emptyList(), null));
+        assertThat(worker, is(notNullValue()));
+        assertThat(worker.isStopped(), is(false));
+
+        WorkerWrapper workerWrapper =
+                new WorkerWrapper.Builder(mContext, mDatabase, work.getStringId())
+                        .withSchedulers(Collections.singletonList(mMockScheduler))
+                        .withListener(mMockListener)
+                        .withWorker(worker)
+                        .build();
+        Executors.newSingleThreadExecutor().submit(workerWrapper);
+        workerWrapper.interrupt(true);
+        assertThat(worker.isStopped(), is(true));
+        assertThat(worker.isCancelled(), is(true));
     }
 
     @Test

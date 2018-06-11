@@ -17,7 +17,7 @@
 package com.android.tools.build.jetifier.processor
 
 import com.android.tools.build.jetifier.core.config.Config
-import com.android.tools.build.jetifier.core.pom.DependencyVersionsMap
+import com.android.tools.build.jetifier.core.pom.DependencyVersions
 import com.android.tools.build.jetifier.core.pom.PomDependency
 import com.android.tools.build.jetifier.core.utils.Log
 import com.android.tools.build.jetifier.processor.archive.Archive
@@ -48,14 +48,6 @@ class Processor private constructor(
         private const val TAG = "Processor"
 
         /**
-         * Value of "restrictToPackagePrefixes" config for reversed jetification.
-         */
-        private val REVERSE_RESTRICT_TO_PACKAGE = setOf(
-            "androidx/",
-            "com/google/android/material/"
-        )
-
-        /**
          * Transformers to be used when refactoring general libraries.
          */
         private fun createTransformers(context: TransformationContext) = listOf(
@@ -84,24 +76,38 @@ class Processor private constructor(
          * @param rewritingSupportLib Whether we are rewriting the support library itself
          * @param useFallbackIfTypeIsMissing Use fallback for types resolving instead of crashing
          * @param versionsMap Versions map for dependencies rewriting
+         * @param dataBindingVersion The versions to be used for data binding otherwise undefined.
          */
         fun createProcessor(
             config: Config,
             reversedMode: Boolean = false,
             rewritingSupportLib: Boolean = false,
             useFallbackIfTypeIsMissing: Boolean = true,
-            versionsMap: DependencyVersionsMap = DependencyVersionsMap.LATEST_RELEASED
+            versionSetName: String? = null,
+            dataBindingVersion: String? = null
         ): Processor {
             var newConfig = config
 
+            val versionsMap = DependencyVersions
+                .parseFromVersionSetTypeId(
+                    versionsMap = config.versionsMap,
+                    versionSetType = versionSetName
+                )
+                .replaceVersionIfAny(
+                    forVariable = DependencyVersions.DATA_BINDING_VAR_NAME,
+                    newVersion = dataBindingVersion
+                )
+
             if (reversedMode) {
                 newConfig = Config(
-                    restrictToPackagePrefixes = REVERSE_RESTRICT_TO_PACKAGE,
+                    restrictToPackagePrefixes = config.reversedRestrictToPackagePrefixes,
+                    reversedRestrictToPackagePrefixes = config.restrictToPackagePrefixes,
                     rulesMap = config.rulesMap.reverse().appendRules(config.slRules),
                     slRules = config.slRules,
                     pomRewriteRules = config.pomRewriteRules.map { it.getReversed() }.toSet(),
                     typesMap = config.typesMap.reverseMapOrDie(),
                     proGuardMap = config.proGuardMap.reverseMap(),
+                    versionsMap = config.versionsMap,
                     packageMap = config.packageMap.reverse()
                 )
             }
@@ -111,7 +117,7 @@ class Processor private constructor(
                 rewritingSupportLib = rewritingSupportLib,
                 isInReversedMode = reversedMode,
                 useFallbackIfTypeIsMissing = useFallbackIfTypeIsMissing,
-                versionsMap = versionsMap)
+                versions = versionsMap)
             val transformers = if (rewritingSupportLib) {
                 createSLTransformers(context)
             } else {
@@ -120,6 +126,22 @@ class Processor private constructor(
 
             return Processor(context, transformers)
         }
+    }
+
+    private val oldDependenciesRegex: List<Regex> = context.config.pomRewriteRules.map {
+        Regex(".*"
+            + it.from.groupId!!.replace(".", "[./\\\\]")
+            + "[./\\\\]"
+            + it.from.artifactId
+            + "[./\\\\].*")
+    }
+
+    private val newDependenciesRegex: List<Regex> = context.config.pomRewriteRules.map {
+        Regex(".*"
+            + it.to.groupId!!.replace(".", "[./\\\\]")
+            + "[./\\\\]"
+            + it.to.artifactId
+            + "[./\\\\].*")
     }
 
     /**
@@ -211,13 +233,43 @@ class Processor private constructor(
         val resultRule = context.config.pomRewriteRules
             .firstOrNull { it.matches(inputDependency) } ?: return null
 
-        if (resultRule.to.isEmpty()) {
-            return null
-        }
-
-        return resultRule.to.single()
-            .rewrite(inputDependency, context.versionsMap)
+        return resultRule.to
+            .rewrite(inputDependency, context.versions)
             .toStringNotation()
+    }
+
+    /**
+     * Returns map of all rewritten dependencies in format "groupId:artifactId"
+     * to "groupId:artifactId:version".
+     *
+     * Don't forget to pass dataBinding version to the constructor to get correct versions.
+     *
+     * @param filterOutBaseLibrary Set true to filter out "baseLibrary" artifact of data binding.
+     */
+    fun getDependenciesMap(filterOutBaseLibrary: Boolean = true): Map<String, String> {
+        return context.config.pomRewriteRules
+            .filter { !filterOutBaseLibrary || !(it.from.artifactId == "baseLibrary"
+                    && it.from.groupId == "com.android.databinding") }
+            .map {
+                (context.versions.applyOnConfigPomDep(it.from).toStringNotationWithoutVersion()
+                    to context.versions.applyOnConfigPomDep(it.to).toStringNotation()) }
+            .toMap()
+    }
+
+    /**
+     * Returns whether the given artifact file is from the old list of dependencies and should be
+     * replaced by a new one.
+     */
+    fun isOldDependencyFile(aarOrJarFile: File): Boolean {
+        return oldDependenciesRegex.any { it.matches(aarOrJarFile.absolutePath) }
+    }
+
+    /**
+     * Return whether the given artifact file is a new artifact from the new set of dependencies
+     * and should be kept.
+     */
+    fun isNewDependencyFile(aarOrJarFile: File): Boolean {
+        return newDependenciesRegex.any { it.matches(aarOrJarFile.absolutePath) }
     }
 
     private fun loadLibraries(inputLibraries: Iterable<FileMapping>): List<Archive> {

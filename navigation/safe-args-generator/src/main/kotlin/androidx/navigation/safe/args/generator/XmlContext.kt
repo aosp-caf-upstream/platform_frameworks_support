@@ -14,19 +14,8 @@
  * limitations under the License.
  */
 
-package androidx.work.impl;
+package androidx.navigation.safe.args.generator
 
-import android.net.Uri;
-import android.support.annotation.RestrictTo;
-
-/**
- * Extra runtime information for Workers.
- *
- * @hide
- */
-@RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
-public class RuntimeExtras {
-
-    public String[] triggeredContentAuthorities;
-    public Uri[] triggeredContentUris;
+data class XmlContext(private val name: String, private val line: Int, private val column: Int) {
+    fun createError(errorMsg: String) = Error("Error at $name:$line:$column $errorMsg")
 }
