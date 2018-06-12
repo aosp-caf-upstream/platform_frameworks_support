@@ -56,7 +56,10 @@ public abstract class CancelWorkRunnable implements Runnable {
     }
 
     void reschedulePendingWorkers(WorkManagerImpl workManagerImpl) {
-        Schedulers.schedule(workManagerImpl.getWorkDatabase(), workManagerImpl.getSchedulers());
+        Schedulers.schedule(
+                workManagerImpl.getConfiguration(),
+                workManagerImpl.getWorkDatabase(),
+                workManagerImpl.getSchedulers());
     }
 
     private void recursivelyCancelWorkAndDependents(WorkDatabase workDatabase, String workSpecId) {
@@ -153,6 +156,36 @@ public abstract class CancelWorkRunnable implements Runnable {
                     workDatabase.endTransaction();
                 }
                 reschedulePendingWorkers(workManagerImpl);
+            }
+        };
+    }
+
+    /**
+     * Creates a {@link CancelWorkRunnable} that cancels all work.
+     *
+     * @param workManagerImpl The {@link WorkManagerImpl} to use
+     * @return A {@link Runnable} that cancels all work
+     */
+    public static Runnable forAll(@NonNull final WorkManagerImpl workManagerImpl) {
+        return new CancelWorkRunnable() {
+            @Override
+            public void run() {
+                WorkDatabase workDatabase = workManagerImpl.getWorkDatabase();
+                workDatabase.beginTransaction();
+                try {
+                    WorkSpecDao workSpecDao = workDatabase.workSpecDao();
+                    List<String> workSpecIds = workSpecDao.getAllUnfinishedWork();
+                    for (String workSpecId : workSpecIds) {
+                        cancel(workManagerImpl, workSpecId);
+                    }
+                    workDatabase.setTransactionSuccessful();
+                    // Update the preferences
+                    new Preferences(workManagerImpl.getApplicationContext())
+                            .setLastCancelAllTimeMillis(System.currentTimeMillis());
+                } finally {
+                    workDatabase.endTransaction();
+                }
+                // No need to call reschedule pending workers here as we just cancelled everything.
             }
         };
     }

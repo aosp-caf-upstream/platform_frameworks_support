@@ -29,7 +29,6 @@ import android.support.annotation.NonNull;
 
 import androidx.work.Data;
 import androidx.work.State;
-import androidx.work.impl.Scheduler;
 
 import java.util.List;
 
@@ -153,6 +152,17 @@ public interface WorkSpecDao {
     WorkSpec.WorkStatusPojo getWorkStatusPojoForId(String id);
 
     /**
+     * For a list of {@link WorkSpec} identifiers, retrieves a {@link List} of their
+     * {@link WorkSpec.WorkStatusPojo}.
+     *
+     * @param ids The identifier of the {@link WorkSpec}s
+     * @return A {@link List} of {@link WorkSpec.WorkStatusPojo}
+     */
+    @Transaction
+    @Query("SELECT id, state, output FROM workspec WHERE id IN (:ids)")
+    List<WorkSpec.WorkStatusPojo> getWorkStatusPojoForIds(List<String> ids);
+
+    /**
      * For a list of {@link WorkSpec} identifiers, retrieves a {@link LiveData} list of their
      * {@link WorkSpec.WorkStatusPojo}.
      *
@@ -241,6 +251,14 @@ public interface WorkSpecDao {
     List<String> getUnfinishedWorkWithName(@NonNull String name);
 
     /**
+     * Retrieves work ids for all unfinished work.
+     *
+     * @return A list of work ids
+     */
+    @Query("SELECT id FROM workspec WHERE state NOT IN " + COMPLETED_STATES)
+    List<String> getAllUnfinishedWork();
+
+    /**
      * Marks a {@link WorkSpec} as scheduled.
      *
      * @param id        The identifier for the {@link WorkSpec}
@@ -266,10 +284,23 @@ public interface WorkSpecDao {
             // We only want WorkSpecs which have not been previously scheduled.
             + " AND schedule_requested_at=" + WorkSpec.SCHEDULE_NOT_REQUESTED_YET
             + " LIMIT "
-                + "(SELECT " + Scheduler.MAX_SCHEDULER_LIMIT + "-COUNT(*) FROM workspec WHERE"
+                + "(SELECT :schedulerLimit" + "-COUNT(*) FROM workspec WHERE"
                     + " schedule_requested_at<>" + WorkSpec.SCHEDULE_NOT_REQUESTED_YET
                     + " AND state NOT IN " + COMPLETED_STATES
                 + ")"
     )
-    List<WorkSpec> getEligibleWorkForScheduling();
+    List<WorkSpec> getEligibleWorkForScheduling(int schedulerLimit);
+
+    /**
+     * Immediately prunes eligible work from the database meeting the following criteria:
+     * - Is finished (succeeded, failed, or cancelled)
+     * - Has zero unfinished dependents
+     */
+    @Query("DELETE FROM workspec WHERE "
+            + "state IN " + COMPLETED_STATES
+            + " AND (SELECT COUNT(*)=0 FROM dependency WHERE "
+            + "    prerequisite_id=id AND "
+            + "    work_spec_id NOT IN "
+            + "        (SELECT id FROM workspec WHERE state IN " + COMPLETED_STATES + "))")
+    void pruneFinishedWorkWithZeroDependentsIgnoringKeepForAtLeast();
 }

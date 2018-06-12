@@ -30,6 +30,7 @@ import android.support.annotation.VisibleForTesting;
 import android.support.annotation.WorkerThread;
 import android.util.Log;
 
+import androidx.work.Configuration;
 import androidx.work.Data;
 import androidx.work.InputMerger;
 import androidx.work.State;
@@ -63,6 +64,7 @@ public class WorkerWrapper implements Runnable {
     private WorkSpec mWorkSpec;
     Worker mWorker;
 
+    private Configuration mConfiguration;
     private WorkDatabase mWorkDatabase;
     private WorkSpecDao mWorkSpecDao;
     private DependencyDao mDependencyDao;
@@ -78,6 +80,7 @@ public class WorkerWrapper implements Runnable {
         mRuntimeExtras = builder.mRuntimeExtras;
         mWorker = builder.mWorker;
 
+        mConfiguration = builder.mConfiguration;
         mWorkDatabase = builder.mWorkDatabase;
         mWorkSpecDao = mWorkDatabase.workSpecDao();
         mDependencyDao = mWorkDatabase.dependencyDao();
@@ -124,8 +127,11 @@ public class WorkerWrapper implements Runnable {
             input = inputMerger.merge(inputs);
         }
 
-        Extras extras =
-                new Extras(input, mWorkTagDao.getTagsForWorkSpecId(mWorkSpecId), mRuntimeExtras);
+        Extras extras = new Extras(
+                input,
+                mWorkTagDao.getTagsForWorkSpecId(mWorkSpecId),
+                mRuntimeExtras,
+                mWorkSpec.runAttemptCount);
 
         // Not always creating a worker here, as the WorkerWrapper.Builder can set a worker override
         // in test mode.
@@ -146,11 +152,11 @@ public class WorkerWrapper implements Runnable {
                 return;
             }
 
-            Worker.WorkerResult result;
+            Worker.Result result;
             try {
                 result = mWorker.doWork();
             } catch (Exception | Error e) {
-                result = Worker.WorkerResult.FAILURE;
+                result = Worker.Result.FAILURE;
             }
 
             try {
@@ -231,7 +237,7 @@ public class WorkerWrapper implements Runnable {
         });
     }
 
-    private void handleResult(Worker.WorkerResult result) {
+    private void handleResult(Worker.Result result) {
         switch (result) {
             case SUCCESS: {
                 Log.d(TAG, String.format("Worker result SUCCESS for %s", mWorkSpecId));
@@ -297,7 +303,7 @@ public class WorkerWrapper implements Runnable {
             notifyListener(false, false);
         }
 
-        Schedulers.schedule(mWorkDatabase, mSchedulers);
+        Schedulers.schedule(mConfiguration, mWorkDatabase, mSchedulers);
     }
 
     private void recursivelyFailWorkAndDependents(String workSpecId) {
@@ -367,7 +373,7 @@ public class WorkerWrapper implements Runnable {
         }
 
         // This takes of scheduling the dependent workers as they have been marked ENQUEUED.
-        Schedulers.schedule(mWorkDatabase, mSchedulers);
+        Schedulers.schedule(mConfiguration, mWorkDatabase, mSchedulers);
     }
 
     static Worker workerFromWorkSpec(@NonNull Context context,
@@ -431,6 +437,7 @@ public class WorkerWrapper implements Runnable {
         private Context mAppContext;
         @Nullable
         private Worker mWorker;
+        private Configuration mConfiguration;
         private WorkDatabase mWorkDatabase;
         private String mWorkSpecId;
         private ExecutionListener mListener;
@@ -438,9 +445,11 @@ public class WorkerWrapper implements Runnable {
         private Extras.RuntimeExtras mRuntimeExtras;
 
         public Builder(@NonNull Context context,
+                @NonNull Configuration configuration,
                 @NonNull WorkDatabase database,
                 @NonNull String workSpecId) {
             mAppContext = context.getApplicationContext();
+            mConfiguration = configuration;
             mWorkDatabase = database;
             mWorkSpecId = workSpecId;
         }

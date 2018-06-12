@@ -45,6 +45,7 @@ import androidx.work.State;
 import androidx.work.TestLifecycleOwner;
 import androidx.work.WorkContinuation;
 import androidx.work.WorkManagerTest;
+import androidx.work.WorkStatus;
 import androidx.work.impl.model.WorkSpec;
 import androidx.work.impl.model.WorkSpecDao;
 import androidx.work.impl.utils.taskexecutor.InstantTaskExecutorRule;
@@ -57,6 +58,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -70,6 +72,7 @@ import java.util.concurrent.Executors;
 @SmallTest
 public class WorkContinuationImplTest extends WorkManagerTest {
 
+    private Configuration mConfiguration;
     private WorkDatabase mDatabase;
     private WorkManagerImpl mWorkManagerImpl;
     private Scheduler mScheduler;
@@ -101,11 +104,11 @@ public class WorkContinuationImplTest extends WorkManagerTest {
 
         mScheduler = mock(Scheduler.class);
         Context context = InstrumentationRegistry.getTargetContext();
-        Configuration configuration = new Configuration.Builder()
+        mConfiguration = new Configuration.Builder()
                 .setExecutor(Executors.newSingleThreadExecutor())
                 .build();
 
-        mWorkManagerImpl = spy(new WorkManagerImpl(context, configuration));
+        mWorkManagerImpl = spy(new WorkManagerImpl(context, mConfiguration));
         when(mWorkManagerImpl.getSchedulers()).thenReturn(Collections.singletonList(mScheduler));
         WorkManagerImpl.setDelegate(mWorkManagerImpl);
         mDatabase = mWorkManagerImpl.getWorkDatabase();
@@ -304,7 +307,8 @@ public class WorkContinuationImplTest extends WorkManagerTest {
 
         // TODO(sumir): I can't seem to get this kicked off automatically, so I'm running it myself.
         // Figure out what's going on here.
-        new WorkerWrapper.Builder(InstrumentationRegistry.getTargetContext(), mDatabase, joinId)
+        Context context = InstrumentationRegistry.getTargetContext();
+        new WorkerWrapper.Builder(context, mConfiguration, mDatabase, joinId)
                 .build()
                 .run();
 
@@ -478,6 +482,29 @@ public class WorkContinuationImplTest extends WorkManagerTest {
         assertThat(joined.hasCycles(), is(false));
     }
 
+    @Test
+    @SmallTest
+    public void testGetStatusesSync() {
+        OneTimeWorkRequest aWork = createTestWorker(); // A
+        OneTimeWorkRequest bWork = createTestWorker(); // B
+        OneTimeWorkRequest cWork = createTestWorker(); // C
+        OneTimeWorkRequest dWork = createTestWorker(); // D
+
+        WorkContinuation firstChain = mWorkManagerImpl.beginWith(aWork).then(bWork);
+        WorkContinuation secondChain = mWorkManagerImpl.beginWith(cWork);
+        WorkContinuation combined = WorkContinuation.combine(dWork, firstChain, secondChain);
+
+        combined.synchronous().enqueueSync();
+        List<WorkStatus> statuses = combined.synchronous().getStatusesSync();
+        assertThat(statuses, is(notNullValue()));
+        List<UUID> ids = new ArrayList<>(statuses.size());
+        for (WorkStatus status : statuses) {
+            ids.add(status.getId());
+        }
+        assertThat(ids, containsInAnyOrder(
+                aWork.getId(), bWork.getId(), cWork.getId(), dWork.getId()));
+    }
+
     private static void verifyEnqueued(WorkContinuationImpl continuation) {
         assertThat(continuation.isEnqueued(), is(true));
         List<WorkContinuationImpl> parents = continuation.getParents();
@@ -489,6 +516,7 @@ public class WorkContinuationImplTest extends WorkManagerTest {
     }
 
     private static void verifyScheduled(Scheduler scheduler, WorkContinuationImpl continuation) {
+        Configuration configuration = continuation.getWorkManagerImpl().getConfiguration();
         ArgumentCaptor<WorkSpec> captor = ArgumentCaptor.forClass(WorkSpec.class);
         verify(scheduler, times(1)).schedule(captor.capture());
         List<WorkSpec> workSpecs = captor.getAllValues();
@@ -496,7 +524,10 @@ public class WorkContinuationImplTest extends WorkManagerTest {
 
         WorkDatabase workDatabase = continuation.getWorkManagerImpl().getWorkDatabase();
         List<WorkSpec> eligibleWorkSpecs =
-                workDatabase.workSpecDao().getEligibleWorkForScheduling();
+                workDatabase
+                        .workSpecDao()
+                        .getEligibleWorkForScheduling(
+                                configuration.getMaxSchedulerLimit());
 
         Set<String> capturedIds = new HashSet<>();
         for (WorkSpec workSpec : workSpecs) {

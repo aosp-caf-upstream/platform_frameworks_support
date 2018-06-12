@@ -16,8 +16,6 @@
 
 package androidx.car.widget;
 
-import static androidx.annotation.RestrictTo.Scope.LIBRARY_GROUP;
-
 import static java.lang.annotation.RetentionPolicy.SOURCE;
 
 import android.content.Context;
@@ -43,7 +41,6 @@ import androidx.annotation.IdRes;
 import androidx.annotation.IntDef;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.annotation.RestrictTo;
 import androidx.annotation.UiThread;
 import androidx.annotation.VisibleForTesting;
 import androidx.car.R;
@@ -818,11 +815,18 @@ public class PagedListView extends FrameLayout {
     }
 
     /**
-     * Scrolls the contents of the RecyclerView up a page.
-     * @hide
+     * Scrolls the contents of the RecyclerView up a page. A page is defined as the height of the
+     * {@code PagedListView}.
+     *
+     * <p>The resulting first item in the list will be snapped to so that it is completely visible.
+     * If this is not possible due to the first item being taller than the containing
+     * {@code PagedListView}, then the snapping will not occur.
      */
-    @RestrictTo(LIBRARY_GROUP)
     public void pageUp() {
+        if (mRecyclerView.getLayoutManager() == null || mRecyclerView.getChildCount() == 0) {
+            return;
+        }
+
         // Use OrientationHelper to calculate scroll distance in order to match snapping behavior.
         OrientationHelper orientationHelper =
                 getOrientationHelper(mRecyclerView.getLayoutManager());
@@ -858,11 +862,18 @@ public class PagedListView extends FrameLayout {
     }
 
     /**
-     * Scrolls the contents of the RecyclerView down a page.
-     * @hide
+     * Scrolls the contents of the RecyclerView down a page. A page is defined as the height of the
+     * {@code PagedListView}.
+     *
+     * <p>This method will attempt to bring the last item in the list as the first item. If the
+     * current first item in the list is taller than the {@code PagedListView}, then it will be
+     * scrolled the length of a page, but not snapped to.
      */
-    @RestrictTo(LIBRARY_GROUP)
     public void pageDown() {
+        if (mRecyclerView.getLayoutManager() == null || mRecyclerView.getChildCount() == 0) {
+            return;
+        }
+
         OrientationHelper orientationHelper =
                 getOrientationHelper(mRecyclerView.getLayoutManager());
         int screenSize = mRecyclerView.getHeight();
@@ -986,11 +997,34 @@ public class PagedListView extends FrameLayout {
             mLastItemCount = itemCount;
         }
 
-        // We need to update the scroll buttons after layout has happened.
-        // Determining if a scrollbar is necessary requires looking at the layout of the child
-        // views. Therefore, this determination can only be done after layout has happened.
-        // Note: don't animate here to prevent b/26849677
-        updatePaginationButtons(false /*animate*/);
+        if (!mScrollBarEnabled) {
+            // Don't change the visibility of the ScrollBar unless it's enabled.
+            return;
+        }
+
+        boolean isAtStart = isAtStart();
+        boolean isAtEnd = isAtEnd();
+
+        if ((isAtStart && isAtEnd) || layoutManager.getItemCount() == 0) {
+            mScrollBarView.setVisibility(View.INVISIBLE);
+            return;
+        }
+
+        mScrollBarView.setVisibility(View.VISIBLE);
+        mScrollBarView.setUpEnabled(!isAtStart);
+        mScrollBarView.setDownEnabled(!isAtEnd);
+
+        if (mRecyclerView.getLayoutManager().canScrollVertically()) {
+            mScrollBarView.setParametersInLayout(
+                    mRecyclerView.computeVerticalScrollRange(),
+                    mRecyclerView.computeVerticalScrollOffset(),
+                    mRecyclerView.computeVerticalScrollExtent());
+        } else {
+            mScrollBarView.setParametersInLayout(
+                    mRecyclerView.computeHorizontalScrollRange(),
+                    mRecyclerView.computeHorizontalScrollOffset(),
+                    mRecyclerView.computeHorizontalScrollExtent());
+        }
     }
 
     /**
@@ -1217,18 +1251,15 @@ public class PagedListView extends FrameLayout {
 
     /** Used to listen for {@code PagedListView} scroll events. */
     public abstract static class OnScrollListener {
-        /** Called when menu reaches the bottom */
+        /**
+         * Called when the {@code PagedListView} has been scrolled so that the last item is
+         * completely visible.
+         */
         public void onReachBottom() {}
         /** Called when scroll up button is clicked */
         public void onScrollUpButtonClicked() {}
         /** Called when scroll down button is clicked */
         public void onScrollDownButtonClicked() {}
-        /** Called when the alpha jump button is clicked. */
-        public void onAlphaJumpButtonClicked() {}
-        /** Called when scrolling to the previous page via up gesture */
-        public void onGestureUp() {}
-        /** Called when scrolling to the next page via down gesture */
-        public void onGestureDown() {}
 
         /**
          * Called when RecyclerView.OnScrollListener#onScrolled is called. See
