@@ -62,11 +62,14 @@ public class Schedulers {
      * @param schedulers   The {@link List} of {@link Scheduler}s to delegate to.
      */
     public static void schedule(
+            @NonNull Configuration configuration,
             @NonNull WorkDatabase workDatabase,
             List<Scheduler> schedulers) {
 
         WorkSpecDao workSpecDao = workDatabase.workSpecDao();
-        List<WorkSpec> eligibleWorkSpecs = workSpecDao.getEligibleWorkForScheduling();
+        List<WorkSpec> eligibleWorkSpecs =
+                workSpecDao.getEligibleWorkForScheduling(
+                        configuration.getMaxSchedulerLimit());
         scheduleInternal(workDatabase, schedulers, eligibleWorkSpecs);
     }
 
@@ -102,14 +105,14 @@ public class Schedulers {
 
     static @NonNull Scheduler createBestAvailableBackgroundScheduler(
             @NonNull Context context,
-            @NonNull Configuration configuration) {
+            @NonNull WorkManagerImpl workManager) {
 
         Scheduler scheduler;
         boolean enableFirebaseJobService = false;
         boolean enableSystemAlarmService = false;
 
         if (Build.VERSION.SDK_INT >= WorkManagerImpl.MIN_JOB_SCHEDULER_API_LEVEL) {
-            scheduler = new SystemJobScheduler(context, configuration);
+            scheduler = new SystemJobScheduler(context, workManager);
             setComponentEnabled(context, SystemJobService.class, true);
             Log.d(TAG, "Created SystemJobScheduler and enabled SystemJobService");
         } else {

@@ -17,6 +17,7 @@
 package androidx.work;
 
 import android.content.Context;
+import android.net.Network;
 import android.net.Uri;
 import android.support.annotation.Keep;
 import android.support.annotation.NonNull;
@@ -42,7 +43,7 @@ public abstract class Worker {
     /**
      * The result of the Worker's computation that is returned in the {@link #doWork()} method.
      */
-    public enum WorkerResult {
+    public enum Result {
         /**
          * Used to indicate that the work completed successfully.  Any work that depends on this
          * can be executed as long as all of its other dependencies and constraints are met.
@@ -136,40 +137,61 @@ public abstract class Worker {
     }
 
     /**
-     * Override this method to do your actual background processing.
+     * Gets the {@link Network} to use for this Worker.  This method returns {@code null} if there
+     * is no network needed for this work request.
      *
-     * @return The result of the work, corresponding to a {@link WorkerResult} value.  If a
-     * different value is returned, the result shall be defaulted to
-     * {@link Worker.WorkerResult#FAILURE}.
+     * @return The {@link Network} specified by the OS to be used with this Worker
      */
-    @WorkerThread
-    public abstract @NonNull WorkerResult doWork();
+    @RequiresApi(28)
+    public final @Nullable Network getNetwork() {
+        Extras.RuntimeExtras runtimeExtras = mExtras.getRuntimeExtras();
+        return (runtimeExtras == null) ? null : runtimeExtras.network;
+    }
 
     /**
-     * Call this method to pass an {@link Data} object to {@link Worker} that is
-     * dependent on this one.
+     * Gets the current run attempt count for this work.
      *
-     * Note that if there are multiple {@link Worker}s that contribute to the target, the
-     * Data will be merged together, so it is up to the developer to make sure that keys are
-     * unique.  New values and types will clobber old values and types, and if there are multiple
-     * parent Workers of a child Worker, the order of clobbering may not be deterministic.
+     * @return The current run attempt count for this work.
+     */
+    public final int getRunAttemptCount() {
+        return mExtras.getRunAttemptCount();
+    }
+
+    /**
+     * Override this method to do your actual background processing.
      *
-     * This method is invoked after {@link #doWork()} returns {@link Worker.WorkerResult#SUCCESS}
-     * and there are chained jobs available.
+     * @return The result of the work, corresponding to a {@link Result} value.  If a
+     * different value is returned, the result shall be defaulted to
+     * {@link Result#FAILURE}.
+     */
+    @WorkerThread
+    public abstract @NonNull Result doWork();
+
+    /**
+     * Call this method to pass a {@link Data} object as the output of this {@link Worker}.  This
+     * result can be observed and passed to Workers that are dependent on this one.
      *
+     * In cases like where two or more {@link OneTimeWorkRequest}s share a dependent WorkRequest,
+     * their Data will be merged together using an {@link InputMerger}.  The default InputMerger is
+     * {@link OverwritingInputMerger}, unless otherwise specified using the
+     * {@link OneTimeWorkRequest.Builder#setInputMerger(Class)} method.
+     * <p>
+     * This method is invoked after {@link #doWork()} returns {@link Result#SUCCESS} or
+     * {@link Result#FAILURE}.
+     * <p>
      * For example, if you had this structure:
-     *
+     * <pre>
      * {@code WorkManager.getInstance(context)
-     *             .enqueueWithDefaults(WorkerA.class, WorkerB.class)
-     *             .then(WorkerC.class)
-     *             .enqueue()}
+     *             .beginWith(workRequestA, workRequestB)
+     *             .then(workRequestC)
+     *             .enqueue()}</pre>
      *
-     * This method would be called for both WorkerA and WorkerB after their successful completion,
-     * modifying the input Data for WorkerC.
+     * This method would be called for both {@code workRequestA} and {@code workRequestB} after
+     * their completion, modifying the input Data for {@code workRequestC}.
      *
      * @param outputData An {@link Data} object that will be merged into the input Data of any
-     *                   OneTimeWorkRequest that is dependent on this one, or {@code null} if there
-     *                   is nothing to contribute
+     *                   OneTimeWorkRequest that is dependent on this one, or {@link Data#EMPTY} if
+     *                   there is nothing to contribute
      */
     public final void setOutputData(@NonNull Data outputData) {
         mOutputData = outputData;
@@ -198,7 +220,7 @@ public abstract class Worker {
      * <p>
      * Note that it is almost never sufficient to check only this method; its value is only
      * meaningful when {@link #isStopped()} returns {@code true}.
-     * <p>
+     *
      * @return {@code true} if this work operation has been cancelled
      */
     public final boolean isCancelled() {
